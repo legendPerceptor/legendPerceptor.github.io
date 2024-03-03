@@ -1,5 +1,5 @@
 
-Static files and code for generating my personal website [liuyuanjian.com](https://www.liuyuanjian.com). The page design is based on Jekyll Chirpy Theme.
+Static files and code for generating my personal website [yuanjianliu.net](https://www.yuanjianliu.net). The page design is based on Jekyll Chirpy Theme.
 
 ## Documentation
 
