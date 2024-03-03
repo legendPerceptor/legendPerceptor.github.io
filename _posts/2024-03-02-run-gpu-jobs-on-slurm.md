@@ -2,7 +2,7 @@
 title: Run Jobs on Slurm systems with GPUs
 author: yuanjian
 date: 2024-03-02 20:48:00 -0500
-categories: [Blogging, Tutorial]
+categories: [Tutorial]
 tags: [Slurm, GPU]
 pin: true
 ---
