@@ -7,9 +7,6 @@ tags: [skill]
 pin: true
 math: true
 mermaid: true
-image:
-  path: https://i9.ytimg.com/vi/NqbkCPf2DU8/mqdefault.jpg?v=60dbede7&sqp=CMzqjq8G&rs=AOn4CLC0Cgt4SMkg9qC_eERbNk7Bqo9oHw
-  alt: learn to use Latex in 10 minutes
 ---
 
 这篇笔记简要地记录了Latex的基本使用技巧。
