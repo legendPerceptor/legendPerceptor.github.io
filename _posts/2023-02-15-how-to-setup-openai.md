@@ -2,7 +2,7 @@
 title: How to set up OpenAI and use their APIs
 author: yuanjian
 date: 2024-02-15 20:25:00 -0500
-categories: [Blogging, Tutorial]
+categories: [Tutorial]
 tags: [OpenAI, GPT, DALLE-2, ChatGPT]
 pin: true
 ---
