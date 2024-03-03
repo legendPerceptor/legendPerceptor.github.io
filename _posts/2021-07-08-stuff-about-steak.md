@@ -4,7 +4,7 @@ author: yuanjian
 date: 2019-08-08 23:30:00 +0800
 categories: [Share]
 tags: [food]
-pin: true
+pin: false
 math: true
 mermaid: true
 image:
