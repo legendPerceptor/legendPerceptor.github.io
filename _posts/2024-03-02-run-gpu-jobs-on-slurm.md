@@ -207,11 +207,28 @@ We can load a relatively new Anaconda module and install PyTorch ourselves. We'l
 
 ```bash
 conda create --name tgpu python=3.11
+```
 
-# Run the following command in a GPU session
+After creating the conda environment, enter a GPU session to install PyTorch with CUDA.
+
+Run the following command in a GPU session.
+
+```bash
 conda activate tgpu
 pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
 ```
+
+Then you can use `torch.cuda.is_available()` to test if CUDA toolkit is properly installed. We can also see the `torch.__version__` is the latest. You should see the following output.
+
+```python
+>>> import torch
+>>> torch.__version__
+'2.2.1+cu118'
+>>> torch.cuda.is_available()
+True
+```
+
+
 
 
 ## Run GPU jobs on ACCESS machines
@@ -247,6 +264,100 @@ python train_simplecnn.py
 
 ### SDSC Expanse
 
+For SDSC, still, check their [Official User Guide](https://www.sdsc.edu/support/user_guides/expanse.html#running) first. I had a problem about conda init. It seems when you load the Anaconda module on SDSC Expanse, the conda environment is not initialized properly. I found that the node simply did not load the .bashrc file in the home folder. After adding one line to manually source the .bashrc file, everything looks normal.
+
+One thing to note is that when you use the partition `gpu`, even if you didn't use all the resources on one node, they will still charge you for the whole node. Therefore I'd stick to `gpu-shared` most of the time (when using fewer than 4 GPUs), unless I can utilize all the resources in one node.
+
+
+We already know how to get into a GPU session on Midway 2, let's enter a GPU session and install the latest PyTorch. Most things are similar, but remember to change the account to your own account, and change the partition accordingly. Some machines require `--gres`, some others just require `--gpus`. Please refer to their user guide to decide how to enter a GPU session.
+
+```bash
+srun --partition=gpu-debug --pty --account=chi151 --nodes=1 --ntasks-per-node=4 --mem=8G -t 00:30:00 --wait=0 --gpus=1 /bin/bash
+```
+
+Run the following command in the GPU session.
+
+```bash
+conda activate tgpu
+pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+```
+
+It will install the latest PyTorch with CUDA 11.8 support. Then we can submit the batch job on a regular login node with the following sbatch script.
+
+```bash
+#!/bin/bash
+#SBATCH --job-name=traincnn
+#SBATCH --account chi151
+#SBATCH --output=traincnn.out
+#SBATCH --error=traincnn.err
+#SBATCH --time=00:20:00
+#SBATCH --partition=gpu-shared
+#SBATCH --gpus=1
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+
+module load anaconda3/2021.05/q4munrg
+source /home/yliu4/.bashrc
+conda activate mygpu
+
+python train_simplecnn.py
+```
+
+### NCSA Delta
+
+Check the [User Guide](https://docs.ncsa.illinois.edu/systems/delta/en/latest/user_guide/running_jobs.html) as always! The system already has a conda environment loaded by default.
+
+Create a virutal environment.
+
+```bash
+conda create --name mygpu python=3.11
+```
+
+You might see an error as shown below.
+
+> CondaValueError: You have chosen a non-default solver backend (libmamba) but it was not recognized. Choose one of: classic
+{: .prompt-danger }
+
+If you see the error, run the following command to change the conda backend from `libmamba` to `classic`. Then you should be able to create a virtual environment as before.
+
+```bash
+conda config --set solver classic
+```
+
+We can then install the latest PyTorch
+
+```bash
+conda activate mygpu
+pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+```
+
+Start a GPU session to verify the PyTorch+CUDA installation. To know which account you should use, run the `accounts` command, which is unique to the NSCA Delta machine.
+
+```bash
+srun -A bcnl-delta-gpu --time=00:30:00 --nodes=1 --ntasks-per-node=16 --partition=gpuA40x4 --gpus=1 --mem=16g --pty /bin/bash 
+```
+
+Make sure the .bashrc file in your home folder has the conda initialization lines in there. And remember to change the account to your own account. Then you can submit the job with the following script.
+
+```bash
+#!/bin/bash
+#SBATCH --job-name=traincnn
+#SBATCH --account bcnl-delta-gpu
+#SBATCH --output=traincnn.out
+#SBATCH --error=traincnn.err
+#SBATCH --time=00:20:00
+#SBATCH --partition=gpuA40x4
+#SBATCH --gpus=1
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+
+module load anaconda3_cpu/23.7.4
+source /u/yliu4/.bashrc
+conda deactivate
+conda activate mygpu
+
+python train_simplecnn.py
+```
 
 
 ## My SSH Config File
