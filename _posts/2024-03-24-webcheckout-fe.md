@@ -19,7 +19,7 @@ _Figure 1. The "Resources" menu is where you look for cameras, lights, audio gea
 
 The gear hiearchy helps us locate all our gears under one category `LMC Fire Escape`, and each gear is under some subcategory (there can be multiple levels of subcategories). To illustrate the hiearchy, we can use a tree as shown in **Figure 2**. We always ask students to reserve gears on a `Type` instead of on a `Resource` because it is meaningless and troublesome to figure out which "LMC FE Boom Pole" they reserved.
 
-![Gear Hiearchy Tree](https://i.ibb.co/VYjyqnP/Gear-Hiearchy.png)
+![Gear Hiearchy Tree](https://i.ibb.co/rvzmrsj/Gear-Hiearchy.png)
 _Figure 2. The "Gear Hiearchy" illustration._
 
 On the WebCheckout backend, the hiearchy tree can be navigated by `Parent Type` and `Subtypes`. The `Parent Type` helps you navigate closer to the root, while the `Subtypes` navigates you further down to the leaf. Each blue text shown in **Figure 3** is clickable. Combining the Resource search and the navigation, you should be able to find every single gear we have in the system.
@@ -123,10 +123,10 @@ This method is more of a shortcut, you can always follow the steps mentioned in 
 
 ## 5. Create A Bundle for Gears with Multiple Parts
 
-For a more complicated gear, we put multiple parts into a bundle for easier reservation. We also try our best to put them physically in the same bag or at least close to each other. For example, the new Amaron light has several parts as shown in **Figure 17**. We create a new resource type called `LMC FE Amaron Light` for the light to show up under `LMC FE Lighting`. Inside the new resource type, we create a new type for each part of the gear. We can add individual resources to the types as usual. But here we make them invisible in Patron Portal--- Go to the `Admin` menu, there will be a checkbox for visibility in the Patron Portal, just uncheck that. We create another resource type called "XXX Bundle". We don't add any actual resources into it but go to the `Bundle` menu to associate each of the other types with the bundle resource type, as shown in **Figure 18**.
+For a more complicated gear, we put multiple parts into a bundle for easier reservation. We also try our best to put them physically in the same bag or at least close to each other. For example, the new Amaran light has several parts as shown in **Figure 17**. We create a new resource type called `LMC FE Amaran Light` for the light to show up under `LMC FE Lighting`. Inside the new resource type, we create a new type for each part of the gear. We can add individual resources to the types as usual. But here we make them invisible in Patron Portal--- Go to the `Admin` menu, there will be a checkbox for visibility in the Patron Portal, just uncheck that. We create another resource type called "XXX Bundle". We don't add any actual resources into it but go to the `Bundle` menu to associate each of the other types with the bundle resource type, as shown in **Figure 18**.
 
-![Bundle Idea Illustration](https://i.ibb.co/dLFf6K2/Bundle-Light.png)
-_Figure 17. Amaron Light Bundle Illustration._
+![Bundle Idea Illustration](https://i.ibb.co/BsrQYxg/Bundle-Light.png)
+_Figure 17. Amaran Light Bundle Illustration._
 
 ![Bundle other resources](https://i.ibb.co/brRS4Yh/Bundle-Resources.png)
 _Figure 18. Add Resources Into The Bundle._
