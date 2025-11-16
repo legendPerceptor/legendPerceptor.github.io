@@ -35,7 +35,7 @@ GPT Brief Intro
 
 DALLE-2 Brief Intro
 ======
-Here is a simplified high level illustration of how it looks inside DALLE. There is one important question, why not directly decode the text embedding but going through a Prior and a Image Embedding? The authors noted much better results whhen using the additional Prior model using CLIP.
+Here is a simplified high level illustration of how it looks inside DALLE. There is one important question, why not directly decode the text embedding but going through a Prior and an Image Embedding? The authors noted much better results when using the additional Prior model using CLIP.
 
 ![DALLE illustration](https://i.ibb.co/kMw0g80/diffusionmodel.jpg)
 
