@@ -11,11 +11,20 @@ Hey there! Thanks for subscribing to my content recommendation posts. In this se
 
 This edition includes content I curated during the week of 2026/01/19–2026/01/25. These dates are not meant to suggest when you should consume the material—they’re simply a reference for when I organized it. Most of the content below is largely time-agnostic, meaning you can explore it whenever you like and still gain value, knowledge, or fresh perspectives.
 
-# The ONE thing to watch for the week
+## ONE technical video to watch for the week
 
-[How Claude Code Works](https://www.youtube.com/watch?v=RFKCzGlAU6Q). This video costs 1 hour of your free time, but if you are doing regular coding work, it will be super helpful. Jared Zoneraich shared his experience and 
+[How Claude Code Works](https://www.youtube.com/watch?v=RFKCzGlAU6Q). This video costs 1 hour of your free time, but if you are doing regular coding work, it will be super helpful.
 
-## Interesting tools for the week
+Claude Code Architecture emphasizes simplicity, advocating for providing tools and minimizing unnecessary complexity. As models evolve, they become increasingly proficient in tool calling, thus avoiding the pitfalls of over-optimization and scaffolding.
+
+Tool calls and models --- building a better coding agent involves optimizing tool calls and adhering to engineering principles, emphasizing simplicity for effective design.
+
+Context management --- the use of an async buffer known as H2A decouples the I/O process from reasoning, effectively managing context to avoid bloating the model and improving performance. Strategies like summarizing capacity limits and storing information long-term in a sandbox yield smarter responses, while eliminating complex engineering webs can enhance maintainability.
+
+Sub Agents Functionality --- Sub agents in Claude code manage context effectively by isolating tasks and feeding back only results, thereby preventing clutter. Each sub agent operates with its own context and demonstrates flexibility in handling prompts, enabling better performance across various tasks like documentation and coding.
+
+
+## TWO Interesting tools for the week
 
 [YouLearn AI Summarizer](https://www.youlearn.ai/youtube-video-summarizer?utm_source=chatgpt.com). You can use this tool to summarize a YouTube video for easier note taking and glance through the content to decide if you want to watch the entire video.
 
@@ -44,18 +53,56 @@ Good quotes:
 - They have a myopic focus on short-term pleasure that slowly beats them into a pulp without them realizing it until decades down the road.
 - Those who are not in the game just don't understand how little competition there actually is.
 
-[How to Get Rich on Easy Mode](https://www.youtube.com/watch?v=5PKYfRofUdg) by Ali Abdaal. In this video, Ali elaborates the two ways to pursue wealth: hard mode and easy mode. In simple words, easy mode targets at supporting businesses while the hard mode tries to sell products to individual customers. The key principle of achieving wealth is to help others make money.
+[How to Get Rich on Easy Mode](https://www.youtube.com/watch?v=5PKYfRofUdg) posted by Ali Abdaal.
+
+In this video, Ali elaborates the two ways to pursue wealth: hard mode and easy mode. In simple words, easy mode targets at supporting businesses while the hard mode tries to sell products to individual customers. The key principle of achieving wealth is to help others make money.
 
 To achieve wealth easily, individuals must connect their work to revenue generation, understanding how their jobs contribute to their employer's profits. High-paying roles, particularly in sales and finance, directly influence revenue, making it easier for employees to negotiate raises or promotions based on their financial contributions.
 
 Selling to businesses (B2B) is generally easier than selling to consumers (B2C) since businesses make purchasing decisions based on logic and potential ROI, while consumers are often driven by emotions. Focusing on high-value sales can simplify the business process.
 
+[What Makes Toxic People Stop Targeting You](https://www.youtube.com/watch?v=Qn4pctpwW-U) by Mr No Plan A.
+
+The real issue with mean people is not their inherent meanness, but rather that you are unknowingly signaling to them that it's acceptable to treat you poorly. By identifying and correcting this behavior just once, you can change the dynamic, causing mean individuals to back off and allowing kind people to treat you with more respect.
+
+- Stop Reacting: to regain control from toxic individuals, avoid immediate reactions to their provacations. When they say hurtful things, maintaining calm and not engaging demonstrates that their words have no power over you, ultimately making their attempts to provoke less enjoyable.
+
+- Control Reactions: when faced with negativity or attempts to provoke, respond  with calmness instead of anger. Maintain a neutral demeanor, allowing a brief pause before giving a simple, nonchalant reply.
+
+- Stop Explaining Yourself: weak individuals often over-explain their decisions to see validation, which can make them appear guilty or unsure. Instead, assertively state your choice without elaboration, fostering confidence and discouraging further questioning.
+
+- Create Consequences: to deter bad behavior, establish consequences by withdrawing your availability when disrespected, demonstrating that such treatment leads to reduced access to you. This approach encourages others to reconsider their actions, as they realize their behavior has tangible repercussions.
+
+- Comfort with Dislike: to foster personal growth and eliminate toxic relationships, it's essential to become comfortable with being disliked. Toxic individuals exploit the fear of rejection, manipulating those who seek approval. Embracing the idea that not everyone will like you allows for authenticity and encourages the departure of those who thrive on control.
+
+- Be Fine Alone: Establishing boundaries earns you respect over mere likability; prioritize respect. To assert your independence, genuinely embrace solitude and stop chasing people for attention. As you focus on your hapiness and interests, you'll naturally attract those who value your presence while the toxic relationships will fade away.
+
+
 ## FIVE news to know (may or may not be interesting to you)
 
+1. Scott Kenneth Homer Bessent, the United States Secretary of the Treasury replied to a reporter's question on the `kill line` (a term from gaming culture describing a harsh reality in the U.S.: a job loss, medical emergency, or unexpected bill could push an ordinary person from stability into destitution almost overnight). The full content can be viewed in this video [LIVE: Scott Bessent holds news conference in Davos](https://www.youtube.com/watch?v=AY6BK-ZOQ6M).
+
+2. [Chinese Universities Surge in Global Rankings as U.S. Schools Slip](https://www.nytimes.com/2026/01/15/us/harvard-global-ranking-chinese-universities-trump-cuts.html) by The New York Times. The article reported Harvard falling to No. 3 on a list measuring academic output, while Zhejiang University stays the No. 1. The list is the [CWTS Leiden Ranking](https://traditional.leidenranking.com/ranking/2025/list), and it focuses on the total number of papers. There are P(top 10%) and PP(top 10%) columns, which are also worth attention.
+
+3. [The Woman Who Stands Between Donald Trump and Greenland](https://www.nytimes.com/2026/01/25/world/europe/mette-frederiksen-denmark-greenland.html) by The New York Times. Mette Frederiksen, Denmark's leader has taken big risks standing up to Mr. Trump.
+
+4. American TikTok --- TikTok is an American company now. A group of American investors closed a $14 billion deal Thursday night to acquire the US version of the short-form video app and avoid a shutdown mandated by the 2024 divestor-ban law due to national security concerns. Under the deal, TikTok’s original parent, ByteDance, will retain 19.9% of the company while Larry Ellison’s Oracle, private equity firm Silver Lake, and Abu Dhabi-based investment company MGX will split 45% of the company as managing investors. Most of the remaining shares of the new US TikTok entity will be owned by existing ByteDance investors.
+
+5. Minnesota businesses strike against ICE (US Immigration and Customs Enforcement). Minnesota Authorities Investigate Fatal Shooting as Federal Officials Blame Victim. Videos analyzed by The New York Times showed the victim holding a phone, not a gun, when he was tackled by federal agents, contradicting claims by Trump administration officials.
 
 
-## TEN weekly English words to learn
+## SEVEN weekly English words to learn
 
-**adamant**: refusing to be persuaded or to change one's mind. Example: "He is adamant that he is not going to resign". "They're adamant on convincing you the greastest things to do are the greatest things that they did."
+**adamant**: refusing to be persuaded or to change one's mind. Example: "He is adamant that he is not going to resign". "They're adamant on convincing you the greastest things to do are the greatest things that they did".
 
-**sabotage**: deliberately destroy, damage, or obstruct something, especially for political or military advantage. Examples: "Power lines from South Africa were sabotaged by rebel forces."
+**sabotage**: deliberately destroy, damage, or obstruct something, especially for political or military advantage. Example: "Power lines from South Africa were sabotaged by rebel forces".
+
+**demeanor**: outward behavior or bearing. Example: "Maintain a neutral demeanor". "A quiet, somber demeanor".
+
+**nonchalant**: feeling or appearing casually, calm and relaxed; not displaying anxiety, interest, or enthusiasm. Example: "She gave a nonchhalant shrug".
+
+**repercussion**: an unintended consequence occurring some time after an event or action, especially an unwelcome one. Example: "They will realize that their behavior has tangible repercussions". "The move would have grave repercussions for the entire region".
+
+**enthrall**: capture the fascinated attention of. Example: "she had been so enthralled by the adventure that she had hardly noticed the cold". "I have been enthralled with your work for 4 years".
+
+**retribution**: punishment inflicted on someone as vengeance for a wrong or criminal act. Example: "employees asked not to be named, saying they feared retribution". "They have both Israeli and Palestinian blood on their hands and fear retribution".
