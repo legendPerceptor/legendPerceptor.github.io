@@ -11,6 +11,8 @@ My interests lie in several fields. If you found common interesting points, I'd 
 
 **Music**: singing, music composing, piano playing. I regularly pratice singing and piano playing. They bring a lot of joy and feeling of existence for me.
 
+**Dancing**: I enjoy Hiphop dancing, and mainly because it is conveniently available in my current company. If time permits, I will participate in 2 dancing classes weekly.
+
 **Videography**: filmmaking, video editing. Video editing takes a ton of time. I currently have a full-time job, which diminishes the time I have to do video editing. But I am still very interested in this field.
 
 **Digital Painting**: I paint with a Wacom tablet and Photoshop. I am trying to learn from WLOP and some great digital painters to create my own gallery of paintings.
