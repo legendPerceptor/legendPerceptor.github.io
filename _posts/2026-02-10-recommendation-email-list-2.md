@@ -19,6 +19,18 @@ The 23 design patterns consist of 5 creational patterns, 7 structural patterns, 
 
 ## THREE YouTube Videos for personal growth
 
+[Success Is Hard Until You Build Systems Like This](https://www.youtube.com/watch?v=MBPHU7aaklM) by Ali Abdaal. Ali elaborated the importance of building a system for any professional work or personal growth. With a system, you need some additional efforts at the beginning and gradually need less and less effort but more and more efficient growth. He mentioned five systems to build for yourself.
+
+1. Goal-setting system: Setting clear goals is crucial for success, as it provides direction and purpose, even if these goals change over time. Many people lack a systematic approach, leading to inconsistency and frustration in achieving their aspirations. Implementing a structured goal-setting system, like the GPS method, allows for thoughtful planning and prioritization, ultimately fostering intrinsic motivation and clarity toward achieving meaningful objectives.
+
+2. Time management system: To effectively achieve goals, individuals must consciously work towards them rather than just following societal norms. A robust time management system is essential, encompassing time blocking, prioritization, and reflection. By structuring their time intentionally, individuals can maximize productivity and align their actions with their aspirations. There are three requried things in any kind of work: time, energy, focus. We only have 168 hours a week, and we have 100 hours except for sleep. If we have a job, we probably need to spend 60 hours on the job, leaving us only 40 hours to do our personal stuff.
+
+3. Health operating system: Creating a health optimization system—covering sleep, diet, and exercise—can significantly improve your well-being. Implementing strategies like consistent sleep schedules, meal planning, and structured workouts reduces decision fatigue and fosters healthier habits. A reliable system turns health management into an automated process, allowing you to focus on other life aspects while ensuring your health needs are met. 8 hours of sleep like 10 - 6, 11 - 7, no phone in the bedroom or no screen time before bed. Systemizing the hosuehold diet is very helpful. Exercise schedule!
+
+4. Relationship system: Systematizing relationships can significantly reduce decision fatigue and enhance the quality of interactions with loved ones. Regular practices, such as weekly date nights, monthly relationship reviews, and standing social events, create intentionality and consistency in maintaining connections. Simple actions like sending annual Christmas cards or setting birthday reminders in a calendar illustrate how these systems foster deeper bonds and ensure relationships thrive even amidst busy lives.
+
+5. Personal finance system: Developing a structured system for handling paychecks is crucial for successful personal finance management. By automatically allocating portions of each paycheck to savings, investments, taxes, and bills, individuals can avoid emotional decision-making and ensure their financial health. Automating these processes allows for consistent financial growth and reduces the guesswork, enabling people to focus on their goals without overwhelming their decision-making capacities.
+
 
 ## FIVE global news to know for the week
 
