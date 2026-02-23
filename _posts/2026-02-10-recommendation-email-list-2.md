@@ -1,15 +1,14 @@
 ---
-title: Content Recommendation for the week 2026/02/09 - 2026/02/14
-author: yuanjian
-date: 2026-02-10 22:45:00 +0800
+title: Content Recommendation for Feburary, 2026
+date: 2026-02-22 22:45:00 +0800
 categories: [Content Recommendation]
 tags: [Design Patterns, Personal Brand, Personal Growth]
 pin: false
 ---
 
-Hey there! Thanks for subscribing to my content recommendation posts. In this series, I share articles, videos, projects, and ideas that I’ve recently found interesting, insightful, or genuinely helpful.
+Hey there! Thanks for subscribing to my content recommendation posts. In this series, I share articles, videos, projects, and ideas that I recently found interesting, insightful, or genuinely helpful.
 
-This edition includes content I curated during the week of 2026/02/09–2026/02/14. These dates are not meant to suggest when you should consume the material—they’re simply a reference for when I organized it. Most of the content below is largely time-agnostic, meaning you can explore it whenever you like and still gain value, knowledge, or fresh perspectives.
+This edition includes content I curated during Feburary, 2026. I wanted to post this at the end of the first week of Feburary. But as you can see, procrastination and other life/work stuff stopped me from completing it. This second post is almost a month later after the first post. I am sorry about that and will try my best to continue the weekly content recommendation.
 
 ## ONE open-source project to look at for the week
 
@@ -32,6 +31,28 @@ The 23 design patterns consist of 5 creational patterns, 7 structural patterns, 
 5. Personal finance system: Developing a structured system for handling paychecks is crucial for successful personal finance management. By automatically allocating portions of each paycheck to savings, investments, taxes, and bills, individuals can avoid emotional decision-making and ensure their financial health. Automating these processes allows for consistent financial growth and reduces the guesswork, enabling people to focus on their goals without overwhelming their decision-making capacities.
 
 
+[How I trained my mind to create instead of consume](https://www.youtube.com/watch?v=7HBhL7lltpU) by josh czuba. It is important to de-stimulate yourself for a bit and disconnect from technology from time to time, have some sleep, drink some water, and reset your brain to refind the basic human instinct of curiosity.
+
+**Disconnection from technology**: Technology is making people mentally lazy, and constant digital consumption reduces our ability to focus and engage deeply.
+
+**De-stimulation as the first step**: To reset your mind, it's essential to take breaks from consuming information, rest, and nourish your body with sleep, water, and healthy food.
+
+**Intrinsic motivation over external rewards**: Creativity should be pursued for personal fulfillment, not for external validation or perfection. Embrace playfulness and curiosity.
+
+**Facing discomfort**: Starting something new, especially creative activities, comes with discomfort, but it's a healthy part of growth. Over time, this discomfort becomes enjoyable and addictive in a positive way.
+
+**Impact on humanity**: Reclaiming creativity and focusing on personal growth can help humanity overcome distractions and create a better world.
+
+[If You Want to be Wealthy & Happy...](https://www.youtube.com/watch?v=OyKIbaSk2s4) by GrindBuddy. This is a timeless message from Jim Rohn. In 1981, Jim Rohn held his seminar 'The Challenge to Succeed,' which later became one of his most watched. This video is a re-edit of the parts of this seminar about personal development.
+
+Three steps: 1. Find out how things work. 2. Take action! Don't let your learning become knowledge, you will become a fool. Let your learning become action, you can become wealthy. 3. Don't try to beat the systems. Find out how it works best and do it the right way.
+
+Become a good reader --- at least 30 minutes a day! Every successful person is a good reader and they can self-educate. A lot of successful people have written down how they did it but people just do not read the stories.
+
+Listen --- Learn from both the negative and positive. Find out what poor people read and don't read it. Get around successful people and listen to what they say and how they say it.
+
+Observe --- Get around succesful people and watch. Success leaves clues. Sight --- see with your eyes; Insight --- see with your mind. Pay attention. Don't miss anything. Whereever you are, be there!
+
 ## FIVE global news to know for the week
 
 1. SpaceX + xAI. Elon Musk’s net worth soared past $800 billion this week after he merged SpaceX with xAI in a deal that valued the combined entity at $1.25 trillion. Read [Elon Musk wants to be a trillionaire — here’s how SpaceX may get him there](https://www.cnbc.com/2026/02/07/elon-musk-wants-to-be-a-trillionaire-how-spacex-xai-tesla-can-get-him-there.html) by CNBC. Elon Musk became the first person ever to top the $800 billion mark this week, and he is worth more than the next richest people - Google co-founders Larry Page and Sergey Brin and Meta CEO Mark Zuckerberg - combined.
@@ -40,12 +61,13 @@ The 23 design patterns consist of 5 creational patterns, 7 structural patterns, 
 
 3. Panama's court decision stripping a Chinese-linked company of key port contracts in the Panama Canal has triggered a backlash from Beijing, thrusting the strategic waterway back into the spotlight. Read [Port dispute thrusts Panama Canal back into heart of US-China rivalry](https://www.france24.com/en/americas/20260206-port-dispute-thrusts-panama-canal-back-into-heart-of-us-china-rivalry) by France 24 and [U.S.-China power struggle thrusts Panama Canal back into the spotlight](https://www.cnbc.com/2026/02/06/panama-canal-us-trump-china-xi-ck-hutchison-ports.html) by CNBC.
 
-4. [I Just Returned From China. We Are Not Winning](https://www.nytimes.com/2026/02/10/opinion/china-ai-ev-trump.html) by New York Times Opinion section. 
+4. [I Just Returned From China. We Are Not Winning](https://www.nytimes.com/2026/02/10/opinion/china-ai-ev-trump.html) by New York Times Opinion section. While China still lags the United States in terms of cutting-edge semiconductor chips, it has an abundance of another key ingredient of AI success: power. China has more than twice as much generating capacity as the US do.
 
+5. [The Television Show Every American Should Watch](https://www.nytimes.com/2026/02/23/opinion/pitt-america-tv.html) by Frank Bruni in The New York Times Opinion section. He talks about the TV series `The Pitt` Season 1 released in 2025. It's the medical drama, streaming on Max, that won a bunch of Emmy Awards lst year and has an intriguing real-time conceit. It's an empathy exam. It's a civics lesson. Above all, it's a study of people under intense pressure.
 
 ## SEVEN English words to learn for the week
 
-> I recommend visiting [Merriam-Webster Dictionary](https://www.merriam-webster.com/dictionary/backlash) to understand each word better and find more examples.
+> I recommend visiting [Merriam-Webster Dictionary](https://www.merriam-webster.com/dictionary/) to understand each word better and find more examples.
 {: .prompt-info }
 
 **backlash**: a strong negative reaction by a large number of people, especially to a social or political development. Example: "The *backlash* against the law marks the strongest show of dissent since they were first elected". "The Republican president's Thursday night post was blamed on a staffer after widespread *backlash*, from civil rights leaders to veteran Republican senators, for its treatment of the nation's first Black president and first lady."
@@ -53,3 +75,11 @@ The 23 design patterns consist of 5 creational patterns, 7 structural patterns, 
 **curb**: a raised concrete or stone edge separating a street from a sidewalk or median, designed to provide structural support, manage water drainage, and delineate traffic areas. Example: "China has been experiencing deflation in its producer price index (PPI) for more than three years, prompting the government to roll out a series of "anti-involution" policies designed to *curb* price competition among manufacturers." In the example, *curb* is used as a verb *to check or control with or as if with a curb*.
 
 **formidable**: causing fear, dread, or apprehension, very difficult to deal with. Example: "China is just too formidable as a rival --- as well as a critical manufacturing powerhouse --- to be reinedd in by diplomacy or an aggressive shift in policy."
+
+**intriguing**: engaging the interest to a marked degree --- fasinating. Example: an intriguing concept that should engender much debate among climatologists.
+
+**conceit**: favorable opinion, a fanciful idea. Example: the landlord's conceit of his own superior knowledge.
+
+**commotion**: a condition of civil unrest or insurrection. Example: The need to do so is only growing, because the commotion of Mr. Trump's first year back in office has set America back.
+
+**colossus**: a statue of gigantic size and proportions. Example: That adds up to the fact that there are two Chinese economies: a sluggish domestic economy and the colossus that dominates global manufacturing.
