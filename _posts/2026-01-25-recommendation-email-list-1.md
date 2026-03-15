@@ -1,5 +1,5 @@
 ---
-title: Content Recommendation for the week 2026/01/19 - 2026/01/25
+title: Content Recommendation for Janurary, 2026
 author: yuanjian
 date: 2026-01-25 08:54:00 +0800
 categories: [Content Recommendation]
@@ -7,7 +7,7 @@ tags: [Claude Code, Personal Brand, Personal Growth]
 pin: false
 ---
 
-Hey there! Thanks for subscribing to my content recommendation posts. In this series, I share articles, videos, projects, and ideas that I’ve recently found interesting, insightful, or genuinely helpful.
+Hey there! Thanks for subscribing to my content recommendation posts. In this series, I share articles, videos, projects, and ideas that I recently found interesting, insightful, or genuinely helpful.
 
 This edition includes content I curated during the week of 2026/01/19–2026/01/25. These dates are not meant to suggest when you should consume the material—they’re simply a reference for when I organized it. Most of the content below is largely time-agnostic, meaning you can explore it whenever you like and still gain value, knowledge, or fresh perspectives.
 
