@@ -16,9 +16,9 @@ This edition includes content I curated during March, 2026. In this month, we se
 
 By the time you read this article, you have probably already heard about this project and been amazed by how quickly it has gained popularity. In this guide, I will show you how to install it on a NAS and provide a solid starting point for exploring and experimenting with this powerful AI agent.
 
-I assume you use UGREEN NAS or some kind of computer systems that run 24/7 at your home. OpenClaw is better deployed on such platforms with Docker. Deploying it on your laptop is not covered in this tutorial. For that purpose, you can check [OpenClaw's Official Website](https://openclaw.ai/).
+I assume you use UGREEN NAS or some kind of computer systems that run 24/7 at your home. OpenClaw is better deployed on such platforms with Docker. How to deploy it on your laptop is not covered in this tutorial (although you can still learn about the proxy setup here). For installing it in your laptop, you can go to [OpenClaw's Official Website](https://openclaw.ai/), as it is pretty straightforward.
 
-### Configure Openclaw with Feishu
+### Configure OpenClaw with Feishu
 
 To avoid needing a proxy network, we use the image `1panel/openclaw`. The important thing is to map your NAS storage to `/home/node/.openclaw`, so all the configuration files are visable and editable directly in NAS. In this way, we can use different methods to configrue OpenClaw before running the gateway.
 
@@ -30,8 +30,8 @@ docker run -d \
   1panel/openclaw
 ```
 
-> It is important to have the volume mapping because the openclaw container will shutdown itself when you change the configuration. This can be very annoying! We need to configrue it with other tools and then start the actual openclaw container.
-{ .prompt.tip }
+> It is important to have the volume mapping because the openclaw container will shutdown itself when you change the configuration. This can be very annoying! We need to configrue it with other tools and then start the actual openclaw container. Check my project [openclaw-stable](https://github.com/legendPerceptor/openclaw-stable) to avoid the container shutting itself down when updating configurations.
+{: .prompt-tip }
 
 ```bash
 docker run -it \
@@ -53,6 +53,8 @@ You can exit to the host machine and start the actual openclaw container now.
 ```bash
 docker start 1panel_openclaw-1
 ```
+
+Now you should be able to communicate with the OpenClaw through Feishu (the robot is created by the Feishu's plugin). At the moment, you use a domestic model (e.g. GLM) and a domestic channel (Feishu), so you don't need any proxy for this basic setup to work. Congratulations!
 
 To configure other things unrelated to OpenClaw, we can enter the container with the following command.
 
@@ -78,7 +80,7 @@ curl -x http://xray:1087 https://www.google.com -I
 
 ### Install Claude Code for OpenClaw to use
 
-Read [this article](https://docs.bigmodel.cn/cn/coding-plan/tool/claude#claude-code) by Zhipu to install Claude Code.
+Read [this article](https://docs.bigmodel.cn/cn/coding-plan/tool/claude#claude-code) by Zhipu to install Claude Code with the GLM model behind it.
 
 Use the following command to enter the container as the root user.
 
@@ -96,7 +98,7 @@ npx @z_ai/coding-helper
 
 ### Configure Network Proxy (For Discord and other foreign platforms)
 
-> At this moment, using a proxy to access Discord still have problems. I succeeded with TUN mode but failed to obtain a response using Docker's network. The more reliable way to use OpenClaw is to use Feishu.
+> Discord proxy caused me a lot of troubles. I succeeded configuring it with two different ways. If you use OpenClaw in WSL or a physcial machine, you can use systemd's environment variable to proxy it. If you use docker, this step is a bit troublesome. You need to proxy it in both the environment variable level, and the openclaw's Discord configruation level. I recommend asking OpenClaw to configure itself after you set up your xray container.
 {: .prompt-danger }
 
 > I cannot assist you to set up your proxy step-by-step. If you never heard of `v2ray`, `xray` or `shadowsocks`, `vmess`, it is probably hard for you to finish this. But if you used at least one of these, I am sure you can follow along with maybe a little help from ChatGPT.
@@ -155,34 +157,39 @@ sudo systemctl status docker
 And you can then create a dedicated proxy container for future network proxy, so you no longer need your laptop nearby for NAS to have network proxy.
 
 ```bash
-sudo docker run -d \
-  --name xray \
-  -v /etc/xray:/etc/xray \
-  -p 1081:1081 \
-  -p 1087:1087 \
-  --restart unless-stopped \
-  teddysun/xray
-
 # Create a docker network and connect the container x2ray to it.
 docker network create proxy-net
-docker network connect proxy-net xray
+docker run -d \
+  --name xray \
+  --restart always \
+  --network proxy-net \
+  -v /volume1/docker/xray/config.json:/etc/xray/config.json:ro \
+  teddysun/xray
 ```
 
 Then we can start the openclaw container and connect it to the proxy-net network. We need to set a folder on the NAS for OpenClaw to work with. This folder is better to be a dedicated folder that is newly created, so OpenClaw has no rights to access your existing files and could not cause detrimental problems to your data.
 
+### Use openclaw-stable docker image
+
+> To allow openclaw to configrue itself, we add a `superviord` process so that the container does not stop when openclaw configuration changes. I wrote a project called [openclaw-stable](https://github.com/legendPerceptor/openclaw-stable), you can use docker to build this image.
+{: .prompt-tip }
+
 ```bash
 # Start the container for openclaw
-# !Attention: Change -v option, the working directory mapping to your own. 
+# !Attention: Change -v options, the working directory mapping to your own. 
 docker run -d \
   --name openclaw \
+  --restart always \
   --network proxy-net \
-  -p 18789:18789 \
+  -v /volume1/shared-shanghai/openclaw-workhome/1panel-claw:/home/node/.openclaw \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v /usr/bin/docker:/usr/bin/docker \
+  -v /var/log/openclaw:/var/log/supervisor \
+  -v /home/briannas/.ssh:/home/node/.ssh \
   -e HTTP_PROXY=http://xray:1087 \
   -e HTTPS_PROXY=http://xray:1087 \
-  -e ALL_PROXY=socks5://xray:1081 \
-  -e GLOBAL_AGENT_HTTP_PROXY=http://xray:1087 \
-  -v /volume1/shared-shanghai/openclaw-workhome:/data \
-  ghcr.io/openclaw/openclaw
+  -e NO_PROXY=localhost,127.0.0.1,*.feishu.cn,*.larksuite.com,*.zhipuai.cn,bigmodel.cn,open.bigmodel.cn \
+  openclaw-stable
 ```
 
 Use `docker network inspect proxy-net` to check if the docker network is configured properly.
@@ -204,7 +211,9 @@ curl -I https://discord.com/api/v10/gateway
 
 If you see `HTTP/1.1 200 Connection established`, then your network works! We should be able to use OpenClaw freely now.
 
+As for how to configure your Discord bot, you can ask your OpenClaw on Feishu. In short, you need to create an application in the Discord developer platform, create a bot and give it the permissions (Presence Intent, Server Members Intent, Message Content Intent), then invite your bot to your private server by generating an URL in the OAuth2 tab. Then, OpenClaw will need your userID, your guild ID (server ID, channel ID), and you should be able to figure it out by communicating with OpenClaw.
 
+Congratulations on having your AI assistant available on both Feishu and Discord platforms.
 
 ## SEVEN English words to learn for the week
 
