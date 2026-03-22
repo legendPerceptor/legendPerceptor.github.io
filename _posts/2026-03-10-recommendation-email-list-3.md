@@ -215,6 +215,34 @@ As for how to configure your Discord bot, you can ask your OpenClaw on Feishu. I
 
 Congratulations on having your AI assistant available on both Feishu and Discord platforms.
 
+## TWO YouTube videos to watch for personal growth
+
+In this post, I will recommend two videos in Chinese. They are both about the technology advancements in AI. Have a good time watching them!
+
+[解剖小龍蝦 — 以 OpenClaw 為例介紹 AI Agent 的運作原理](https://www.youtube.com/watch?v=2rcJdFuNbZQ) by Hung-yi Lee (李宏毅). If you want to understand the internal procedures of how OpenClaw works, this video will be super helpful.
+
+[E228｜谷歌TPU能撼动英伟达吗？前TPU工程师首次揭秘](https://www.youtube.com/watch?v=0h4hPRBgsVA) Can Google's TPU challenge NVIDIA's top position in AI chips?
+
+
+### Video 1: How does AI Agent work?
+
+**OpenClaw Agent Workflow**
+
+AI Agents like OpenClaw manipulate language models to function as personal assistants by augmenting prompts with rich context from local files, allowing them to 'know' their identity and goals. When asked to introduce themselves, the AI generates a response based on a lengthy system prompt that contains pre-defined information, skills, and previous interactions, making it appear knowledgeable and personable. This process involves significant computational resources, as responses can involve over 4000 tokens due to the extensive context provided.
+
+**Agent Memory and Recall**
+
+The .md files stored within the AI Agent, like Soul.md, contain personal information such as its identity and goals, which are assigned by humans rather than self-generated. These files, while modifiable by users, can lead to confusion if changed inconsistently, as the AI's memory is dynamic and must align with its programming. The AI relies on past conversation history to function effectively, similar to a character from a movie dealing with severe amnesia, requiring consistent reminders of prior interactions.
+
+**Agent Tools and Execution**
+
+AI Agents like OpenClaw operate by executing specific commands on a computer, using embedded tools such as 'read' and 'write' to process tasks. When given a task, the agent relays commands to a language model, which interprets and executes them, potentially leading to vulnerabilities if not properly managed. Ensuring safety involves settings that require human approval before executing critical commands, as well as limiting the agent's ability to process external inputs such as YouTube comments.
+
+
+## FIVE international news to know
+
+
+
 ## SEVEN English words to learn for the week
 
 > I recommend visiting [Merriam-Webster Dictionary](https://www.merriam-webster.com/dictionary/) to understand each word better and find more examples.
