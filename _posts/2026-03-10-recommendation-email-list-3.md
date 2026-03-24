@@ -16,7 +16,9 @@ This edition includes content I curated during March, 2026. In this month, we se
 
 By the time you read this article, you have probably already heard about this project and been amazed by how quickly it has gained popularity. In this guide, I will show you how to install it on a NAS and provide a solid starting point for exploring and experimenting with this powerful AI agent.
 
-I assume you use UGREEN NAS or some kind of computer systems that run 24/7 at your home. OpenClaw is better deployed on such platforms with Docker. How to deploy it on your laptop is not covered in this tutorial (although you can still learn about the proxy setup here). For installing it in your laptop, you can go to [OpenClaw's Official Website](https://openclaw.ai/), as it is pretty straightforward.
+I assume you use UGREEN NAS or some kind of computer systems that run 24/7 at your home. OpenClaw is better deployed on such platforms with Docker to have more fine-grained priviledge control.
+
+If you want to install it in your laptop, better use a virtual machine like WSL on Windows or a brand new laptop that belongs to your OpenClaw to avoid security issues (OpenClaw can access everything you store on your computer). You can go to [OpenClaw's Official Website](https://openclaw.ai/) for  instructions on installing it on your laptop.
 
 ### Configure OpenClaw with Feishu
 
@@ -105,6 +107,16 @@ npx @z_ai/coding-helper
 {: .prompt-warning }
 
 We need to configure the network proxy first as always. You need a proxy usable in the first place (usually your macOS's proxy or your Windows' proxy). Then you can borrow that proxy for docker and configure docker's proxy in this path: `/etc/systemd/system/docker.service.d/http-proxy.conf`.
+
+Alternatively, you can use `~/.config/systemd/user/openclaw-gateway.service.d/proxy.conf` to add the proxy info to systemd.
+
+Always remember to run the following commands to activate the config after modification.
+
+```bash
+systemctl --user daemon-reload
+systemctl --user restart openclaw-gateway
+```
+
 
 The file's content should look like this. I assume `192.168.73.26` is your laptop's proxy and you have a service that exports port 1087 for HTTP and HTTPS proxies.
 
