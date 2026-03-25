@@ -227,6 +227,90 @@ As for how to configure your Discord bot, you can ask your OpenClaw on Feishu. I
 
 Congratulations on having your AI assistant available on both Feishu and Discord platforms.
 
+### Enhanced Memory System (Optional)
+
+OpenClaw comes with a file-based memory system by default, which loads your entire MEMORY.md into every conversation. While simple, this has some limitations:
+
+- Memory grows linearly with conversation history
+- No semantic search capability
+- Higher token consumption as memory expands
+
+You can enhance it with [Agent Memory](https://github.com/legendPerceptor/agent-memory) - a vector-based memory system using Qdrant and OpenAI embeddings. This enables:
+
+- **Semantic search**: Find relevant memories by meaning, not just keywords
+- **Efficient retrieval**: Only load relevant context, not entire history
+- **Better scalability**: Handle thousands of memories without token bloat
+
+> You can totally leave the setup to OpenClaw and other agents. The information below is mainly for you to understand how it works.
+{: .prompt-tip }
+
+#### Setup Agent Memory
+
+1. **Start a separate Qdrant container** (different from aicreatorvault's):
+
+```bash
+docker run -d \
+  --name agent-memory-qdrant \
+  --restart unless-stopped \
+  -p 6336:6333 \
+  -p 6337:6334 \
+  -v agent_memory_qdrant_data:/qdrant/storage \
+  qdrant/qdrant:latest
+```
+
+2. **Get OpenAI API Key** from [platform.openai.com](https://platform.openai.com/api-keys)
+
+3. **Configure environment**:
+
+```bash
+mkdir -p ~/.openclaw/workspace/agent-memory
+cd ~/.openclaw/workspace/agent-memory
+
+# Create .env file
+cat > .env << 'EOF'
+QDRANT_HOST=localhost
+QDRANT_PORT=6336
+OPENAI_API_KEY=sk-your-api-key-here
+OPENAI_EMBEDDING_MODEL=text-embedding-3-small
+HTTP_PROXY=http://your-proxy:1087
+HTTPS_PROXY=http://your-proxy:1087
+EOF
+```
+
+4. **Install dependencies**:
+
+```bash
+pip install --break-system-packages qdrant-client openai python-dotenv
+```
+
+5. **Use the Memory CLI**:
+
+```bash
+# Record a memory
+python3 memory_cli.py remember "User prefers Chinese language" --type preference --importance 0.8
+
+# Search memories
+python3 memory_cli.py recall "user preferences"
+
+# View stats
+python3 memory_cli.py stats
+```
+
+The memory system will store your memories with OpenAI embeddings in Qdrant, enabling semantic search without loading everything into each conversation.
+
+#### Automatic Backup (Optional)
+
+Add to crontab for daily backups:
+
+```bash
+# Edit crontab
+crontab -e
+
+# Add this line (backup at 2am daily)
+0 2 * * * docker run --rm -v agent_memory_qdrant_data:/data -v ~/backups:/backup busybox tar czf /backup/qdrant_$(date +\%Y\%m\%d).tar.gz /data
+```
+
+
 ## TWO YouTube videos to watch for personal growth
 
 In this post, I will recommend two videos in Chinese. They are both about the technology advancements in AI. Have a good time watching them!
