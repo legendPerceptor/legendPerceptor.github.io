@@ -8,9 +8,18 @@ The website is built on top of jekyll, so please follow [jekyll's official websi
 
 To make things simple, you can run the following two lines of commands to serve the website in [https://localhost:4000](https://localhost:4000).
 
-> If you see a lot of errors, you probably have not installed Ruby and other jekyll's dependencies.
-
 ```bash
 bundle install
 bundle exec jekyll s
+```
+
+## Trouble shooting
+
+> If you see a lot of errors, you probably have not installed Ruby and other jekyll's dependencies.
+
+Try the following commands to install dependencies on Ubuntu. For other systems you also need to install ruby properly.
+
+```bash
+sudo apt update
+sudo apt install -y ruby-full ruby-dev build-essential zlib1g-dev
 ```
