@@ -1,6 +1,6 @@
 ---
 title: Content Recommendation for March, 2026
-date: 2026-02-22 22:45:00 +0800
+date: 2026-03-22 22:45:00 +0800
 categories: [Content Recommendation]
 tags: [OpenClaw]
 pin: false
@@ -241,7 +241,7 @@ You can enhance it with [Agent Memory](https://github.com/legendPerceptor/agent-
 - **Efficient retrieval**: Only load relevant context, not entire history
 - **Better scalability**: Handle thousands of memories without token bloat
 
-> You can totally leave the setup to OpenClaw and other agents. The information below is mainly for you to understand how it works.
+> You can totally leave the setup to OpenClaw and other agents. The information below is mainly for you to understand how it works. You do not need to follow the setup step by step. 
 {: .prompt-tip }
 
 #### Setup Agent Memory
@@ -311,32 +311,146 @@ crontab -e
 ```
 
 
-## TWO YouTube videos to watch for personal growth
+## THREE YouTube videos to watch for personal growth
 
-In this post, I will recommend two videos in Chinese. They are both about the technology advancements in AI. Have a good time watching them!
+In this post, I will recommend two videos in Chinese and one in English. The two videos in Chinese are both about the technology advancements in AI. And the video in English is for improving your learning mindset. Have a good time watching them!
 
 [解剖小龍蝦 — 以 OpenClaw 為例介紹 AI Agent 的運作原理](https://www.youtube.com/watch?v=2rcJdFuNbZQ) by Hung-yi Lee (李宏毅). If you want to understand the internal procedures of how OpenClaw works, this video will be super helpful.
 
-[E228｜谷歌TPU能撼动英伟达吗？前TPU工程师首次揭秘](https://www.youtube.com/watch?v=0h4hPRBgsVA) Can Google's TPU challenge NVIDIA's top position in AI chips?
+[E228｜谷歌TPU能撼动英伟达吗？前TPU工程师首次揭秘](https://www.youtube.com/watch?v=0h4hPRBgsVA) by 硅谷101播客. Can Google's TPU challenge NVIDIA's top position in AI chips?
+
+[How To Learn So Fast It’s Almost Unfair](https://www.youtube.com/watch?v=npQ2IORdlvU) by theMITmonk, who introduces the Three C Protocol, a simple system designed to help you learn, retain, and apply knowledge at a top-1% level. Backed by real-world examples and cognitive science, you’ll see how your brain actually learns, why rest matters more than repetition, and the exact steps to upgrade how you acquire new skills.
 
 
 ### Video 1: How does AI Agent work?
 
-**OpenClaw Agent Workflow**
+#### OpenClaw Agent Workflow
 
 AI Agents like OpenClaw manipulate language models to function as personal assistants by augmenting prompts with rich context from local files, allowing them to 'know' their identity and goals. When asked to introduce themselves, the AI generates a response based on a lengthy system prompt that contains pre-defined information, skills, and previous interactions, making it appear knowledgeable and personable. This process involves significant computational resources, as responses can involve over 4000 tokens due to the extensive context provided.
 
-**Agent Memory and Recall**
+#### Agent Memory and Recall
 
 The .md files stored within the AI Agent, like Soul.md, contain personal information such as its identity and goals, which are assigned by humans rather than self-generated. These files, while modifiable by users, can lead to confusion if changed inconsistently, as the AI's memory is dynamic and must align with its programming. The AI relies on past conversation history to function effectively, similar to a character from a movie dealing with severe amnesia, requiring consistent reminders of prior interactions.
 
-**Agent Tools and Execution**
+#### Agent Tools and Execution
 
 AI Agents like OpenClaw operate by executing specific commands on a computer, using embedded tools such as 'read' and 'write' to process tasks. When given a task, the agent relays commands to a language model, which interprets and executes them, potentially leading to vulnerabilities if not properly managed. Ensuring safety involves settings that require human approval before executing critical commands, as well as limiting the agent's ability to process external inputs such as YouTube comments.
 
+#### Agent Self-Improvement
+
+AI Agents can autonomously create tools to enhance their functionality. For instance, after processing commands for voice synthesis, an AI Agent generates a script named 'tts_check' to automate the speech synthesis and recognition process, which greatly simplifies tasks that would otherwise require repetitive manual communication. Despite their ability to create these tools, AI Agents often forget them and tend to recreate similar tools every time, leading to a clutter of temporary scripts.
+
+#### Agent Subagents and Scaling
+
+The Subagent, a specialized tool within the AI framework, enables the main agent to delegate tasks, such as comparing two papers, to its offspring subagents. These subagents interact extensively with a language model to summarize each paper, allowing the main agent to focus on high-level tasks by preserving context and reducing complexity. To prevent endless outsourcing of tasks among subagents, restrictions can be imposed to limit their ability to create further subagents.
+
+#### Agent Skills and SkillHub
+
+Skill refers to a procedural document used by AI agents, such as OpenClaw, to execute tasks efficiently and avoid missing steps. These skills are stored as text files and can be dynamically accessed upon request, ensuring minimal resource consumption during operation. Users can exchange skills through platforms like Cloud Hub, but caution is advised due to the potential for malicious files embedded within seemingly harmless Skill documents.
+
+#### Agent Long-Term Memory
+
+Skill functionalities may require caution, especially with ongoing operations like Lobster running 24/7 as a personal assistant via WhatsApp. To manage memory, Lobster employs a system that records experiences in .md files, while also utilizing search tools to retrieve past data effectively, although retrieval reliability can vary over longer timeframes. The agent's effectiveness can be limited with weaker models that may fail to execute memory tasks unless they actively write to the memory files.
+
+#### Agent Heartbeats and Scheduling
+
+The lobster utilizes a heartbeat mechanism to interact consistently with language models, enabling it to periodically send commands to perform tasks from a habit file. This system can be adjusted for frequency, allowing dynamic progress updates, akin to progress reports with a professor. Additionally, a Cron Job system complements this by scheduling tasks like video creation, enhancing the lobster's capability to manage timed operations effectively, including waiting for processes to complete.
+
+#### Agent Context Management
+
+OpenClaw utilizes a mechanism called context compaction which summarizes older conversation history into shorter versions, allowing the language model to operate within context window limits. This process is recursive, enabling continuous summarization as dialogue accumulates. Additionally, configurations like pruning and hard clear methods are employed to manage context length effectively and ensure smooth functionality of the AI.
+
+
+### Video 2: Can Google TPU challenge NVIDIA?
+
+#### Core Architectural Difference between TPU and NVIDIA GPU
+
+🔵 NVIDIA GPU
+General-purpose parallel processor.
+Originally designed for graphics → evolved into CUDA compute.
+Flexible: supports many workloads (training, inference, simulation, DB acceleration).
+
+👉 Key idea:
+**SIMT (Single Instruction, Multiple Threads)**
+
+🟡 TPU (by Google)
+Domain-specific ASIC for tensor operations only.
+Built specifically for deep learning matrix multiplications.
+
+👉 Key idea:
+**Systolic array architecture (massive matrix multiply engine)**
+
+
+#### Performance Characteristics in Pretraining
+
+**TPU strengths**
+
+Extremely high throughput for:
+(1) dense matrix multiplication
+(2) transformer training
+(3) Better FLOPs utilization for large models
+(4) High-speed interconnect (TPU pods)
+
+👉 Especially strong for:
+
+BERT / T5 / PaLM / Gemini-style training
+
+**GPU strengths (e.g., NVIDIA A100 / H100)**
+
+(1) More flexible workloads
+(2) Strong performance for:
+(3) mixed workloads
+(4) sparse ops
+(5) custom kernels
+
+Better for:
+(1) research iteration
+(2) non-standard architectures
+
+
+### Video 3: How to learn so fast it's almost unfair
+
+We human beings are built for serial processing, do not do parallel processing when you learn.
+
+The 3C protocol: Compress, Compile, Consolidate.
+
+You cannot learn something new unless you connect it to something you already know.
+
+Pick a conecpt -> learn it -> test it.
+
+Tools: (1) slow burn; (2) immersion; (3) teach to learn.
+
+#### Compression Techniques
+
+To effectively learn, begin by compressing information into manageable chunks, focusing on the 20% of content that offers 80% of the value. Enhance retention by associating new concepts with existing knowledge and visualizing these connections through models or metaphors. This method allows for mastering ideas without overwhelming the brain's capacity to process multiple independent thoughts.
+
+#### Compilation of Knowledge
+
+Memory alone does not equate to mastery, as illustrated by Kim Peek, a savant with remarkable recall who struggled with everyday tasks due to his brain's unique structure. The 99% trap is focusing on information accumulation instead of true learning, which requires managing study periods (90 minutes of focused work followed by a 20-minute rest), and integrating frequent testing into the learning process. By adopting a cycle of learning and testing rather than waiting for a final assessment, one can enhance their learning efficiency.
+
+#### Learning Tools
+
+Effective learning involves three key tools: First, practice slowly and mindfully, focusing on every small movement to enhance skill retention. Second, immerse yourself in real-life situations to truly test your abilities, such as performing in front of an audience instead of just rehearsing alone. Lastly, solidify your knowledge by teaching others what you’ve learned, reinforcing your own understanding.
+
+#### Consolidation and Rest
+
+Learning involves a two-stage process: focus and rest, with the latter being crucial for consolidation. Frequent breaks during intense learning significantly enhance retention, allowing the brain to replay information at an accelerated pace. Additionally, practices like non-sleep deep rest (NSDR) and sufficient sleep are essential for maximizing learning outcomes and reinforcing what has been learned.
+
+#### Long-term Learning Strategies
+
+In the technological age, we've overlooked the necessity of rest for optimal learning, akin to how soil must recover to maintain fertility. Instead of comparing yourself to others, focus on personal growth, and remember that learning must be embraced with patience, as it follows a natural rhythm. Techniques that prioritize performance over criticism and allow for adequate time can lead to transformative results.
 
 ## FIVE international news to know
 
+1. [Asia’s energy crisis stings](https://messaging-custom-newsletters.nytimes.com/dynamic/render?campaign_id=346&emc=edit_wor_20260324&instance_id=173015&isViewInBrowser=true&nl=the-world&paid_regi=1&productCode=WOR&regi_id=96411683&segment_id=217167&sendId=217167&uri=nyt://newsletter/75eb4904-d3d6-59c7-aa33-97c6444b5456) by New York Times. If you live in South Korea, the government has just asked you to take shorter showers and use the washing machine on weekends only. In Nepal, your family might be eating their dinner cold because of an acute shortage of cooking gas. And if you’re organizing a funeral in Pune, India, you can’t have a gas cremation — gas is being rationed for the living.
+
+2. The secretive billionaire owner of OnlyFans, a platform that lets creators sell erotic content directly to users, Leonid Radvinsky, has died of cancer at age 43, the company shared yesterday.
+
+3. [张雪峰因心源性猝死离世](https://www.ctdsb.net/c1476_202603/2696164.html).
+
+4. An airplane crashed at the LaGuardia Airport in New York. It was a collision as the airplane hit a fire truck that was crossing the runway. [Investigators Focus on Potential Overlapping Failures in LaGuardia Crash](https://www.nytimes.com/live/2026/03/24/nyregion/laguardia-plane-crash?campaign_id=60&emc=edit_na_20260324&instance_id=173007&nl=breaking-news&regi_id=96411683&segment_id=217161).
+
+5. News on the Iran war. US troop deployment: Around 1,000 US soldiers with the Army’s 82nd Airborne Division are expected to deploy in coming days to the Middle East, adding to the growing military firepower in the region as the Trump administration touts talks with Iran to end the conflict. [Iran's military rejects Trump's talk of negotiation, Israel and Iran launch airstrikes](https://www.reuters.com/world/asia-pacific/israel-strikes-tehran-trump-says-us-negotiating-end-war-2026-03-25/) by Reuters.
 
 
 ## SEVEN English words to learn for the week
@@ -354,3 +468,6 @@ AI Agents like OpenClaw operate by executing specific commands on a computer, us
 
 *cuckold/cuck*: A cuckold is a man whose wife has committed adultery, a term with deep historical roots often implying mockery of the husband as a fool.
 
+*kardashians*: The Kardashians are an American-Armenian family renowned for their massive influence on pop culture, fashion, and social media, largely through reality TV shows like Keeping Up with the Kardashians.
+
+*potent*: having or wielding force, authority, or influence. Example: My secondary goal is to show you that, even if you don’t think you’re a “creative person,” you can enter an incredibly enjoyable state of consciousness. Similar to the flow state, but potentially more potent.
