@@ -7,7 +7,7 @@ pin: false
 ---
 
 
-I assume you have a Windows laptop as the host machine, and you are tyring to install OpenEuler 24.03 as a virtual machine, then compile opengauss inside this VM. For performance, I recomend VMWare over VirtualBox, but if you just want a free and legal VM software, you can start with VirtualBox. This tutorial will help you install the necessary packages in the OpenEuler 24.03 virtual machine and navigate you to compile the opengauss database system from source code.
+I assume you have a Windows laptop as the host machine, and you are trying to install OpenEuler 24.03 as a virtual machine, then compile opengauss inside this VM. For performance, I recomend VMWare over VirtualBox, but if you just want a free and legal VM software, you can start with VirtualBox. This tutorial will help you install the necessary packages in the OpenEuler 24.03 virtual machine and navigate you to compile the opengauss database system from source code.
 
 ## Download the VM's iso file and install the VM in VMWare
 

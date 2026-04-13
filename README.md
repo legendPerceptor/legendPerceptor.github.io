@@ -22,4 +22,5 @@ Try the following commands to install dependencies on Ubuntu. For other systems 
 ```bash
 sudo apt update
 sudo apt install -y ruby-full ruby-dev build-essential zlib1g-dev
+bundle config set --local path vendor/bundle
 ```
