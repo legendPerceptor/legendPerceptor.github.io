@@ -193,10 +193,10 @@ Cable machines provide constant tension throughout the entire range of motion. T
 
 | Attachment 配件 | English Name | 中文名 | Target 主要锻炼 |
 |----------------|--------------|--------|----------------|
-| <img src="/images/2026-03-26-gym/straight-bar.webp" style="width:90px; height:auto; display:block; margin:auto;"> | Straight Bar | 直杆 | Chest, Back 胸部，背部 |
-| <img src="/images/2026-03-26-gym/tricep-rope.webp" style="width:90px; height:auto; display:block; margin:auto;"> | Rope | 绳索 | Triceps, Abs 三头肌，腹肌 |
-| <img src="/images/2026-03-26-gym/single-handle.jpeg" style="width:90px; height:auto; display:block; margin:auto;"> | Single Handle | 单手柄 | Arms, Shoulders 手臂，肩膀 |
-| <img src="/images/2026-03-26-gym/v-bar.webp" style="width:90px; height:auto; display:block; margin:auto;"> | V-Bar | V型杆 | Triceps 三头肌 |
+| <img src="/images/2026-03-26-gym/straight-bar.webp" alt='straight bar' style="width:90px; height:auto; display:block; margin:auto;"> | Straight Bar | 直杆 | Chest, Back 胸部，背部 |
+| <img src="/images/2026-03-26-gym/tricep-rope.webp" alt='tricep rope' style="width:90px; height:auto; display:block; margin:auto;"> | Rope | 绳索 | Triceps, Abs 三头肌，腹肌 |
+| <img src="/images/2026-03-26-gym/single-handle.jpeg" alt='single handle' style="width:90px; height:auto; display:block; margin:auto;"> | Single Handle | 单手柄 | Arms, Shoulders 手臂，肩膀 |
+| <img src="/images/2026-03-26-gym/v-bar.webp" alt='v bar' style="width:90px; height:auto; display:block; margin:auto;"> | V-Bar | V型杆 | Triceps 三头肌 |
 
 ## Functional Training Equipment 功能训练器械
 
