@@ -103,10 +103,70 @@ npx @z_ai/coding-helper
 > Discord proxy caused me a lot of troubles. I succeeded configuring it with two different ways. If you use OpenClaw in WSL or a physcial machine, you can use systemd's environment variable to proxy it. If you use docker, this step is a bit troublesome. You need to proxy it in both the environment variable level, and the openclaw's Discord configruation level. I recommend asking OpenClaw to configure itself after you set up your xray container.
 {: .prompt-danger }
 
+I'll provide a template for the xray configuration, you need to fill it up with your own service information. Save the following file as `config.json` in a safe path as it contains your secret information.
+
+```json
+{
+  "log": { "loglevel": "warning" },
+  "inbounds": [
+    {
+      "port": 1087,
+      "listen": "0.0.0.0",
+      "protocol": "http",
+      "settings": { "udp": true },
+      "tag": "http-in"
+    },
+    {
+      "port": 1080,
+      "listen": "0.0.0.0",
+      "protocol": "socks",
+      "settings": { "udp": true }
+    }
+  ],
+  "outbounds": [
+    {
+      "protocol": "vmess",
+      "settings": {
+        "vnext": [{
+          "address": "YOUR_SERVICE_ADDRESS",
+          "port": 19903, // YOUR_SERVICE_PORT should be an integer
+          "users": [{
+            "id": "YOUR_SERVICE_UUID",
+            "alterId": 0,
+            "security": "auto"
+          }]
+        }]
+      },
+      "tag": "proxy"
+    },
+    { "protocol": "freedom", "settings": {}, "tag": "direct" }
+  ],
+  "routing": {
+    "domainStrategy": "IPIfNonMatch",
+    "rules": [
+      { "type": "field", "ip": ["geoip:private"], "outboundTag": "direct" }
+    ]
+  }
+}
+```
+
+Start a container to run the xray service. Note that we export two ports: 1080 is for socks5 proxy, and 1087 is for http/https proxy.
+
+```bash
+docker run -d \
+  --name xray \
+  --restart always \
+  --network proxy-net \
+  -p 1087:1087 \
+  -p 1080:1080 \
+  -v /your/path/to/the/config.json:/etc/xray/config.json:ro \
+  teddysun/xray
+```
+
 > I cannot assist you to set up your proxy step-by-step. If you never heard of `v2ray`, `xray` or `shadowsocks`, `vmess`, it is probably hard for you to finish this. But if you used at least one of these, I am sure you can follow along with maybe a little help from ChatGPT.
 {: .prompt-warning }
 
-We need to configure the network proxy first as always. You need a proxy usable in the first place (usually your macOS's proxy or your Windows' proxy). Then you can borrow that proxy for docker and configure docker's proxy in this path: `/etc/systemd/system/docker.service.d/http-proxy.conf`.
+You need a proxy usable in the first place (usually your macOS's proxy or your Windows' proxy, or if you figure out how to download teddysun/xray image somehow, you can start a container using the above method and borrow that proxy). Then you can borrow that proxy for docker and configure docker's proxy in this path: `/etc/systemd/system/docker.service.d/http-proxy.conf`.
 
 Alternatively, you can use `~/.config/systemd/user/openclaw-gateway.service.d/proxy.conf` to add the proxy info to systemd.
 
@@ -117,13 +177,13 @@ systemctl --user daemon-reload
 systemctl --user restart openclaw-gateway
 ```
 
-
 The file's content should look like this. I assume `192.168.73.26` is your laptop's proxy and you have a service that exports port 1087 for HTTP and HTTPS proxies.
 
 ```bash
 [Service]
 Environment="HTTP_PROXY=http://192.168.73.26:1087"
 Environment="HTTPS_PROXY=http://192.168.73.26:1087"
+Environment="ALL_PROXY=http://192.168.73.26:1080"
 Environment="NO_PROXY=localhost,127.0.0.1,192.168.*.*"
 ```
 
