@@ -10,8 +10,53 @@ Hey there! Thanks for subscribing to my content recommendation posts. In this se
 
 This edition contains content I curated during April, 2026. In this month, I developped several open-source projects using Claude Code, Trae, and OpenClaw. I finished my first commercial delivery of semantic operators in a relational database, and would divert my attention to the agent memory systems.
 
-## ONE good practice to utilize NotebookLM to understand academic papers
+## ONE NotebookLM to understand academic papers
 
+Google's NotebookLM has become an important tool for me to read a lot of papers, or better say, to figure out how a certain field works. It can absorb information from multiple sources, like PDFs, websites, images, audio, etc. You can put related paper PDF, github repo, websites into it and start asking questions. The agent will answer your questions based on the materials, and cite the exact content in the material, so there is much less hallucination. This funcionality is perfect to understand a lot of papers quickly.
+
+For example, I put the MemoryBank's paper PDF file in it and ask "How does MemoryBank work? How does it store the memory and how does it retrieve content into its memory?"
+
+NotebookLM gives me the following answer. Note that each number is clickable and will give you the exact reference to check facts.
+
+
+MemoryBank is a long-term memory mechanism designed to transform static large language models into adaptive agents, particularly for personalized scenarios like emotional companions[1][2]. It operates through three main pillars: memory storage, a memory retriever, and a memory updater[3].
+
+1. How MemoryBank Stores Memory
+
+MemoryBank is classified as token-level, Flat Memory (1D), meaning it stores information as discrete, externally accessible units without an explicit complex topology like a graph[4][5]. It constructs a dynamic, multi-layered "warehouse" consisting of three types of information:
+
+- Chronological Dialogue Records: It logs multi-turn conversations in detail, using timestamps to create an ordered narrative of all past interactions [6].
+
+- Hierarchical Event Summaries: To prevent information overload, it distills verbose dialogues into concise daily summaries, which are further synthesized into a "global summary" of significant events[7].
+
+- Dynamic User Portraits: The system assessments user personality traits and emotions daily, aggregating these insights into a global understanding of the user’s personality to tailor future responses[8][9].
+
+2. How MemoryBank Retrieves Content
+
+MemoryBank utilizes a dual-tower dense retrieval model to recall relevant information during real-time conversations[10]. The process works as follows:
+
+- Vectorization: Every conversation turn and event summary (a "memory piece") is pre-encoded into a contextual vector representation using an encoder model[10]. In practice, it uses models like MiniLM for English or Text2vec for Chinese[11].
+
+- Indexing: These vector representations are indexed using FAISS (Facebook AI Similarity Search) to ensure efficient retrieval even as the memory warehouse grows[12].
+
+- Querying: During an interaction, the current conversation context is encoded into a vector that serves as a query to search the index for the most semantically relevant memories[11][12].
+
+- Prompt Augmentation: The retrieved memories, along with the global user portrait and event summaries, are organized into a "memory-augmented prompt" for the LLM to generate a personalized response[13].
+
+3. Memory Updating and Forgetting
+
+To mimic human-like behavior, MemoryBank incorporates an updating mechanism inspired by the Ebbinghaus Forgetting Curve[1][14].
+
+Memory Decay: Memories naturally decay over time according to an exponential model (R=e 
+−t/S
+ ), where R is retention, t is time elapsed, and S is memory strength[15].
+- Reinforcement: When a memory piece is successfully recalled during a conversation, its strength (S) increases and its time counter (t) resets to zero, making it persist longer in the system[15].
+
+- Selective Forgetting: This allows the agent to prioritize significant or frequently accessed information while gradually "forgetting" less important details from the distant past[1][12].
+
+Would you like to know more about the "SiliconFriend" chatbot that was built using this MemoryBank architecture?
+
+NotebookLM is basically a more trustworthy chatbot and I find it best at accelerating paper reading.
 
 ## THREE potentially interesting projects I developped
 
@@ -226,7 +271,7 @@ impl Solution {
 ```
 
 
-## SEVEN English words to learn for the week
+## FIVE English words to learn
 
 > I recommend visiting [Merriam-Webster Dictionary](https://www.merriam-webster.com/dictionary/) to understand each word better and find more examples.
 {: .prompt-info }
@@ -238,3 +283,5 @@ impl Solution {
 **rapport**: a friendly, harmonious relationship characterized especially by agreement, mutual understanding, or empathy that makes communication possible or easy. Example: "For instance, personal AI companions need to recall past conversations for rapport building."
 
 **corroborate**:  to support or help prove with evidence or authority : make more certain. Example: "These findings corroborate the potential of MemoryBank to significantly improve the performance of LLMs into long-term interaction scenarios."
+
+**meticulous**: very careful about doing something in an extremely accurate and exact way. Example: "Memory storage, the warehouse of MemoryBank, is a robust data repository holding a meticulous array of information."
