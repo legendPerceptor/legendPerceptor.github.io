@@ -4,6 +4,7 @@ date: 2026-05-07 09:45:00 +0800
 categories: [Tutorial]
 tags: [memsearch, Claude Code]
 pin: false
+mermaid: true
 ---
 
 [memsearch](https://github.com/zilliztech/memsearch) 是一款基于Milvus向量数据库的语义记忆搜索引擎。它的核心设计理念是将markdown文件作为事实源，Milvus中的向量只是一个可以根据markdown文件重新构建的影子索引(shadow index)。memsearch会对markdown文件构成的知识库进行切片(chunk)，向量嵌入(embed)，储存，然后通过混合搜索的方式抽取记忆。它可以将你的OpenClaw、Claude Code等智能体的长期记忆存储在相同的地方，从而无缝使用不同的智能体一起完成工作。关于记忆系统的总体工作原理，可以参考我的另一篇文章[智能体与记忆体概述](/posts/agents-and-memory-systems)。
@@ -24,6 +25,245 @@ cat .memsearch/memory/$(date +%Y-%m-%d).md
 ```
 
 配置就是如此简单，memsearch作为一个插件会通过Claude Code hooks自动触发，每次你和Claude Code交互时，它会自动地进行记忆构建、演进和抽取。
+
+## MemSearch供智能体调用的接口
+
+MemSearch的设计初衷之一是**让不同智能体共享同一套记忆系统**。无论是Claude Code、OpenClaw、OpenCode还是Codex，它们都使用相同的底层存储（`.memsearch/memory/*.md`）和相同的向量引擎（Milvus），只是通过各自平台的插件机制接入。本节剖析这套跨平台统一接口的设计。
+
+### 四个平台的插件架构对比
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        跨平台插件架构对比                                    │
+├─────────────────┬──────────────┬──────────────┬──────────────┬──────────────┤
+│                 │ Claude Code  │ OpenClaw     │ OpenCode     │ Codex        │
+├─────────────────┼──────────────┼──────────────┼──────────────┼──────────────┤
+│ 存储格式         │ JSONL        │ JSONL        │ SQLite       │ JSONL        │
+│ Hook机制        │ Shell脚本    │ JS API       │ TypeScript   │ Shell脚本    │
+│ 摘要生成        │ claude -p    │ openclaw agent│ opencode prompt│ codex exec  │
+│ 上下文注入      │ SessionStart │ before_agent │ system.trans │ session-start│
+│ Skill上下文     │ context:fork │ N/A          │ N/A          │ N/A          │
+│ 技能调用方式    │ /memory-recall│ /memory-recall│ !memory-recall│ $memory-recall│
+│ 工具注册        │ Skills系统   │ LLM工具调用  │ LLM工具调用  │ 技能系统     │
+└─────────────────┴──────────────┴──────────────┴──────────────┴──────────────┘
+```
+
+尽管实现各异，四个平台共享相同的**三层架构**：
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         统一三层架构                                       │
+│                                                                          │
+│  ┌─────────────────────────────────────────────────────────────────────┐ │
+│  │ Layer 1: 记忆生成（Capture）                                          │ │
+│  │                                                                       │ │
+│  │ 对话轮次完成 → 解析转录 → LLM生成摘要 → 保存到 .memsearch/memory/   │ │
+│  │                                                                       │ │
+│  │ 各平台实现差异：                                                      │ │
+│  │   • Claude Code/Codex: Shell脚本 + claude -p / codex exec            │ │
+│  │   • OpenClaw: JS API + 内置agent生成摘要                            │ │
+│  │   • OpenCode: TypeScript hook + opencode prompt                      │ │
+│  └─────────────────────────────────────────────────────────────────────┘ │
+│                                 │                                        │
+│                                 ▼                                        │
+│  ┌─────────────────────────────────────────────────────────────────────┐ │
+│  │ Layer 2: 向量索引（Index）                                           │ │
+│  │                                                                       │ │
+│  │ markdown文件 → chunk_markdown() → embed() → Milvus upsert            │ │
+│  │                                                                       │ │
+│  │ 所有平台共用：                                                        │ │
+│  │   • 相同的chunk算法（标题边界 + 段落切割）                            │ │
+│  │   • 相同的memsearch CLI（统一入口）                                  │ │
+│  │   • 相同的混合搜索流程（BM25 + dense + RRF）                         │ │
+│  └─────────────────────────────────────────────────────────────────────┘ │
+│                                 │                                        │
+│                                 ▼                                        │
+│  ┌─────────────────────────────────────────────────────────────────────┐ │
+│  │ Layer 3: 记忆检索（Recall）                                          │ │
+│  │                                                                       │ │
+│  │ 用户提问 → 语义搜索 → 展开 → 深度钻取                                │ │
+│  │                                                                       │ │
+│  │ 各平台调用方式差异：                                                  │ │
+│  │   • Claude Code: memory-recall技能（context:fork子代理）              │ │
+│  │   • OpenClaw: memory_search/memory_get/memory_transcript工具         │ │
+│  │   • OpenCode: memory_search/memory_get/memory_transcript工具          │ │
+│  │   • Codex: $memory-recall技能                                         │ │
+│  └─────────────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 共享的核心组件
+
+#### 1. 统一的Summarizer提示词
+
+所有平台共用同一份`summarize.txt`（位于`plugins/_shared/prompts/summarize.txt`），确保跨平台的记忆风格一致：
+
+```markdown
+You are a third-person note-taker. You will receive a transcript of ONE
+conversation turn between a human and {{AGENT_NAME}}.
+
+Your job is to record what happened as factual third-person notes.
+Output 2-6 bullet points, each starting with '- '.
+Write in third person: 'User asked...', '{{AGENT_NAME}} read file X'
+```
+
+**关键设计**：将`{{AGENT_NAME}}`替换为具体平台名称（"Claude Code"、"OpenClaw"等），使同一提示词适配所有平台。
+
+#### 2. 统一的Collection派生算法
+
+每个项目有独立的Milvus collection，通过`derive-collection.sh`从项目路径生成唯一名称：
+
+```bash
+# derive-collection.sh 的核心逻辑
+PROJECT_DIR="$1"
+COLLECTION_NAME="memsearch_$(echo "$PROJECT_DIR" | sha256sum | cut -c1-16)"
+```
+
+这确保：
+- 同一项目在不同智能体间共享记忆（相同的collection）
+- 不同项目隔离（不同的collection）
+
+#### 3. 统一的记忆文件格式
+
+所有平台遵循相同的markdown格式：
+
+```markdown
+# 2026-03-25
+
+## Session 14:47
+
+### 14:47
+<!-- session:UUID turn:UUID transcript:PATH -->
+- User asked about the authentication flow
+- Claude read auth.ts and identified JWT token issues
+- Claude proposed OAuth2 as the replacement solution
+```
+
+**HTML注释锚点**是跨平台追溯的关键：
+- `session:UUID` — 标识会话
+- `turn:UUID` — 标识对话轮次
+- `transcript:PATH` — 指向原始转录文件
+
+#### 4. 统一的向量存储
+
+```python
+# 所有平台共用 MilvusStore（store.py）
+class MilvusStore:
+    # 相同的collection schema
+    # 相同的混合搜索实现
+    # 相同的chunk ID生成算法
+```
+
+这意味着：**Markdown是唯一事实源，向量只是可重建的影子索引**。任何平台保存的记忆，都可以被其他平台检索到。
+
+### 平台差异的具体实现
+
+#### Claude Code vs Codex：相似的Shell Hook架构
+
+```bash
+# Claude Code 和 Codex 都使用Shell脚本作为Hook
+# plugins/claude-code/hooks/
+# plugins/codex/hooks/
+# 共享相同的 common.sh 工具函数库
+
+# 主要差异：
+# • Claude Code: ${CLAUDE_PLUGIN_ROOT} 环境变量
+# • Codex: ${CODEX_HOOK_DIR} 环境变量
+# • Claude Code的stop hook通过claude -p生成摘要
+# • Codex的stop hook通过codex exec LLM生成摘要
+```
+
+#### OpenClaw vs OpenCode：工具调用而非技能
+
+```python
+# OpenClaw/OpenCode注册三个LLM工具（而非技能）
+tools = [
+    "memory_search",     # memsearch search
+    "memory_get",        # memsearch expand
+    "memory_transcript" # transcript.py
+]
+```
+
+这与Claude Code的`context:fork`技能不同——工具直接暴露给主代理，而不是fork子代理。
+
+#### OpenCode的特殊性：SQLite存储
+
+```
+OpenCode使用SQLite存储对话历史（而非JSONL）：
+~/.local/share/opencode/opencode.db
+
+记忆文件中的HTML锚点格式不同：
+<!-- session:SESSION_ID db:~/.local/share/opencode/opencode.db -->
+
+OpenCode的capture-daemon.py负责：
+1. 轮询SQLite数据库
+2. 提取新对话轮次
+3. 写入markdown记忆文件
+```
+
+### 跨平台记忆共享的边界
+
+虽然底层存储共享，但**智能体特定的元数据不同**：
+
+```markdown
+# Claude Code记忆（JSONL转录）
+<!-- session:2026-05-07--10-30-00 turn:01JX... transcript:/path/to/transcript.jsonl -->
+
+# OpenClaw记忆（JSONL转录）
+<!-- session:UUID transcript:~/.openclaw/agents/main/sessions/UUID.jsonl -->
+
+# OpenCode记忆（SQLite转录）
+<!-- session:SESSION_ID db:~/.local/share/opencode/opencode.db -->
+
+# Codex记忆（JSONL转录，但格式为rollout而非transcript）
+<!-- rollout:UUID db:... -->
+```
+
+**关键洞察**：各平台都保留`session`/`turn`级别的锚点，但指向不同格式的转录文件。`memsearch expand`命令会解析HTML锚点，根据平台类型读取相应的转录文件。
+
+### 总结：为什么统一接口重要
+
+```mermaid
+graph TB
+    subgraph Memory["记忆存储层"]
+        MD[Markdown 记忆文件<br/>.memsearch/memory/YYYY-MM-DD.md]
+    end
+
+    subgraph Engine["统一向量引擎"]
+        CLI[memsearch CLI<br/>index · search · expand]
+        Milvus[Milvus 向量数据库<br/>BM25 + Dense + RRF]
+    end
+
+    subgraph Agents["四大智能体平台"]
+        CC[Claude Code<br/>Hook + Skill]
+        CX[Codex<br/>Hook + Skill]
+        OC[OpenClaw<br/>Tool]
+        OD[OpenCode<br/>Tool]
+    end
+
+    MD -->|"chunk & embed"| Milvus
+    Milvus -->|"hybrid search"| CLI
+    CLI --> CC
+    CLI --> CX
+    CLI --> OC
+    CLI --> OD
+
+    style MD fill:#e1d5e7,stroke:#9673a6
+    style Milvus fill:#dae8fc,stroke:#6c8ebf
+    style CLI fill:#fff2cc,stroke:#d6b656
+    style CC fill:#d5e8d4,stroke:#82b366
+    style CX fill:#d5e8d4,stroke:#82b366
+    style OC fill:#d5e8d4,stroke:#82b366
+    style OD fill:#d5e8d4,stroke:#82b366
+```
+
+**这种设计的价值**：
+1. **数据可移植性**：删除插件不丢失记忆，只是停止自动捕获
+2. **跨智能体协作**：Claude Code处理的记忆，OpenClaw/OpenCode/Codex都可以检索
+3. **向量索引幂等**：markdown可重建索引，无需维护状态
+
+**这是"markdown-first"哲学的技术体现**——平台千变万化，但记忆的本质（markdown文本）和检索引擎（memsearch + Milvus）保持统一。
+
 
 ## Claude Code插件工作原理
 
@@ -78,15 +318,82 @@ memsearch index "$MEMORY_DIR"  # Lite模式（本地.db）
 
 同时，它会将最近两天的记忆标题和要点注入到会话上下文中，让Claude一启动就知道最近在做什么项目。
 
-#### 2. UserPromptSubmit：轻量级提示
+#### 2. UserPromptSubmit：信号注入，按需触发
 
-这个钩子非常简洁——当用户发送长度超过10个字符的提示时，注入一个系统提示：
+这个钩子是整个"推-拉混合"模式的核心体现，但它的行为远比表面看起来微妙。
+
+**实际执行逻辑**（`user-prompt-submit.sh`）：
+
+```bash
+# 1. 读取用户输入（JSON格式，通过stdin传入）
+PROMPT=$(_json_val "$INPUT" "prompt" "")
+
+# 2. 过滤短提示（<10字符跳过，减少噪音）
+if [ -z "$PROMPT" ] || [ "${#PROMPT}" -lt 10 ]; then
+  echo '{}'   # 不注入任何内容
+  exit 0
+fi
+
+# 3. 检查memsearch是否可用
+if [ -z "$MEMSEARCH_CMD" ]; then
+  echo '{}'
+  exit 0
+fi
+
+# 4. 注入信号
+echo '{"systemMessage": "[memsearch] Memory available"}'
+```
+
+**关键点：hook本身并不执行任何搜索或存储操作**。它只做一件事——在Claude处理用户消息之前，向其上下文中注入一个信号字符串。实际的向量搜索发生在后续的`memory-recall`技能调用中。
+
+**触发时机与流程**：
 
 ```
-[memsearch] Memory available
+用户发送消息
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  UserPromptSubmit hook 触发（此时Claude还未处理这条消息）         │
+│                                                                  │
+│  输入：用户消息JSON { prompt: "之前我们决定用什么方案来着？" }    │
+│  输出：{ "systemMessage": "[memsearch] Memory available" }      │
+│                                                                  │
+│  注意：hook本身不调用memsearch search                            │
+└─────────────────────────────────────────────────────────────────┘
+    │
+    ▼
+Claude收到：用户消息 + systemMessage信号
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Claude决定是否调用 memory-recall 技能                            │
+│                                                                  │
+│  触发条件（由SKILL.md描述）：                                      │
+│  - 用户问题涉及历史上下文（"之前我们决定..."、"为什么..."）        │
+│  - 看到 "[memsearch] Memory available" 信号                       │
+│                                                                  │
+│  跳过条件：                                                       │
+│  - 问题只涉及当前代码状态（用Read/Grep即可）                      │
+│  - 问题是一次性的临时任务                                         │
+│  - 用户明确要求忽略记忆                                           │
+└─────────────────────────────────────────────────────────────────┘
+    │
+    ▼（如果决定调用）
+┌─────────────────────────────────────────────────────────────────┐
+│  memory-recall 技能作为 FORKED AGENT 运行（context: fork）        │
+│                                                                  │
+│  技能内部：                                                        │
+│  1. memsearch search "<query>" --top-k 5 --json-output          │
+│  2. memsearch expand <chunk_hash> (可选)                        │
+│  3. transcript.py --turn <uuid> --context 3 (可选深度钻取)       │
+│                                                                  │
+│  技能输出：结构化的记忆摘要，返回给主对话上下文                    │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-这告诉Claude：**如果需要历史上下文，可以调用memory-recall技能**。这是一种"推-拉"混合模式：钩子推送提示，Claude按需拉取记忆。
+**context: fork的含义**：memory-recall技能运行在一个独立的子上下文中，它的搜索结果会被合并回主对话。这避免了搜索结果污染主对话的上下文——如果记忆不相关，Claude可以忽略它而不影响主任务。
+
+**这是一种"机会型"记忆检索**：不是每次都强制搜索历史（那样会造成大量无关的上下文干扰），而是在Claude检测到用户可能需要历史上下文时，才通过技能按需拉取。
 
 #### 3. Stop：记忆生成的核心
 
@@ -431,4 +738,7 @@ def expand(chunk_hash):
 ```
 
 这种设计确保了**markdown始终是唯一事实源**，Milvus向量只是可丢弃、可重建的影子索引——这正是MemSearch"markdown-first"设计理念的体现。
+
+
+## MemSearch用到了哪些前沿论文的思想？
 
