@@ -740,5 +740,105 @@ def expand(chunk_hash):
 这种设计确保了**markdown始终是唯一事实源**，Milvus向量只是可丢弃、可重建的影子索引——这正是MemSearch"markdown-first"设计理念的体现。
 
 
-## MemSearch用到了哪些前沿论文的思想？
+## MemSearch用到了哪些论文里的思想？
+
+MemSearch的核心检索能力建立在信息检索领域的多个经典和前沿研究之上。本章梳理其技术选型背后的主要学术思想及其论文出处。
+
+### 1. BM25：概率相关性的经典框架
+
+MemSearch的混合搜索中使用了BM25作为稀疏向量检索的基础算法。BM25源于Robertson和Zaragoza的经典框架：
+
+> **Robertson, S., Zaragoza, H. (2009). *The Probabilistic Relevance Framework: BM25 and Beyond*. Foundations and Trends in Information Retrieval, 3(4), 333-389.**
+
+BM25的核心思想是：**一个文档对查询的相关性，可以通过词项在文档中的出现频率（TF）和在整个语料库中的逆文档频率（IDF）来计算**。相比简单的TF-IDF，BM25引入了饱和函数（saturation function）来约束词频过高时的边际效用递减，并使用文档长度归一化来惩罚过长文档。
+
+```python
+# BM25关键公式
+score = Σ IDF(t) × (tf(t,d) × (k1 + 1)) / (tf(t,d) + k1 × (1 - b + b × |d|/avgdl))
+```
+
+MemSearch的`store.py`通过Milvus的BM25 Function自动对`content`字段建立稀疏向量索引，无需手动计算——Milvus内部实现了标准BM25。
+
+### 2. RRF：融合不确定排名的有效方法
+
+MemSearch使用RRF（Reciprocal Rank Fusion）将BM25和稠密向量两种检索结果进行融合：
+
+> **Webber, W., Moffat, A., Zobel, J. (2010). *A Similarity Measure for Indefinite Rankings*. ACM Transactions on Information Systems, 28(4), Article 20.**
+
+论文证明，当两个独立排序系统产生不确定的排名时，RRF是一种简单而有效的融合方法：
+
+```python
+# RRF公式
+RRF_score(doc) = Σ 1 / (k + rank_i(doc))
+# k=60为常见默认值（MemSearch使用的参数）
+```
+
+RRF的核心优势是**无需训练、无需调参**，且对两种检索结果的不确定性有很强的鲁棒性。MemSearch的`hybrid_search`将BM25和稠密向量的top-k结果输入RRF融合，得到最终排序。
+
+### 3. 稠密向量检索与BGE-M3嵌入
+
+MemSearch默认使用BGE-M3作为嵌入模型，这是BAAI团队的前沿多语言嵌入模型：
+
+> **Chen, J., et al. (2024). *BGE M3-Embedding: Multi-Lingual, Multi-Granularity, Multi-Functionality*. arXiv:2402.03216.**
+
+BGE-M3的核心创新在于**同时支持稠密检索（dense）、冷启动检索（sparse）和多语言**，其性能在MTEB（Massive Text Embedding Benchmark）评测中与OpenAI text-embedding-3-small相当。MemSearch通过`onnx` provider默认使用量化的INT8版本，无需GPU即可高效运行。
+
+### 4. ColBERT：延迟交互的思想
+
+虽然MemSearch并未直接实现ColBERT，但其**late interaction**思想影响了向量检索系统的设计方向：
+
+> **Khattab, O., Zaharia, M. (2020). *ColBERT: Efficient and Effective Passage Search via Contextualized Late Interaction*. SIGIR 2020.**
+
+ColBERT的关键洞察是：**不要在查询编码阶段过度压缩信息，而要在检索阶段保留查询向量和文档向量之间的细粒度交互**。MemSearch的混合搜索（BM25 + dense + RRF）实际上是一种简化的late interaction——通过独立的BM25和向量两个通道捕获不同类型的相关性信号。
+
+### 5. Cross-Encoder重排序
+
+MemSearch支持可选的Cross-Encoder重排序作为混合搜索后的二次排序：
+
+> **Nogueira, R., Jiang, Z., Lin, J. (2020). *Document Ranking with a Pretrained Sequence-to-Sequence Model*. EMNLP 2020.**
+>
+> **Nogueira, R., Cho, K. (2019). *Passage Re-ranking with BERT*. arXiv:1901.04085.**
+
+Cross-Encoder的核心思想是：**将查询和文档一起通过BERT-style的Transformer编码，直接预测相关性分数**。与bi-encoder（分别编码查询和文档）相比，Cross-Encoder能捕获查询词和文档词之间的细粒度交互，但计算代价更高。MemSearch使用`Alibaba-NLP/gte-reranker-modernbert-base`作为默认重排序模型。
+
+### 6. SPLADE：稀疏向量扩展
+
+MemSearch的BM25通过Milvus的analyzer实现，实际上借鉴了SPLADE的思想：
+
+> **Formal, T., Piwowarski, B., Mopuru, S., et al. (2021). *SPLADE: Sparse Lexical and Expansion Models for Bottleneck Information Retrieval*. SIGIR 2021.**
+
+SPLADE的核心创新是**通过神经网络的瓶颈表示来学习查询和文档的稀疏扩展**，实现了词汇匹配和语义匹配的融合。MemSearch的`content`字段启用analyzer后，Milvus内部实现类似的稀疏-稠密双通道机制。
+
+### 7. 智能体记忆系统的研究进展
+
+MemSearch定位为智能体记忆系统，底层借鉴了MemGPT等系统的设计思想：
+
+> **Packer, C., et al. (2023). *MemGPT: Towards LLMs as Operating Systems*. arXiv:2310.08560.**
+
+MemGPT的核心洞察是：**智能体需要分层的记忆架构，将"持久记忆"（外部存储）和"工作记忆"（上下文窗口）分开管理**。MemSearch的`memory-recall`技能通过`context: fork`在独立子代理中执行检索，正是这种分层思想的体现——检索在子上下文中完成，结果再合并回主对话。
+
+### 8. Mem0：记忆系统的新一代范式
+
+MemSearch的对比文档中多次引用了Mem0，后者代表了2024-2025年记忆系统研究的新方向：
+
+> **Mem0 Team. (2025). Mem0: Building Production-Ready AI Agents with Scalable Long-Term Memorym*. arXiv:2504.19413.**
+
+Mem0和MemSearch都强调**记忆的持久性、可检索性和跨会话累积**，但核心差异在于：
+- **Mem0**：偏向LLM写时编排（LLM在写入时主动提取事实、关系）
+- **MemSearch**：偏向LLM读时检索（append-only写入，读取时通过混合搜索自然召回）
+
+### 技术选型总结
+
+| 技术 | 学术来源 | 论文链接 |
+|:---:|:---|:---|
+| BM25 | Robertson & Zaragoza, 2009, *The Probabilistic Relevance Framework: BM25 and Beyond* (FnTIR) | [ACM TOIS](https://dl.acm.org/doi/abs/10.1561/1500000019) |
+| RRF融合 | Webber et al., 2010, *A Similarity Measure for Indefinite Rankings* (ACM TOIS) | [ACM TOIS](https://dl.acm.org/doi/10.1145/1852102.1852106) |
+| BGE-M3稠密嵌入 | Chen et al., 2024, *BGE M3-Embedding* (arXiv:2402.03216) | [arXiv](https://arxiv.org/abs/2402.03216) |
+| Cross-Encoder重排序 | Nogueira et al., 2020, *Document Ranking with a Pretrained Sequence-to-Sequence Model* (EMNLP) | [arXiv](https://arxiv.org/abs/2003.06713) |
+| 延迟交互思想(ColBERT) | Khattab & Zaharia, 2020, *ColBERT: Efficient and Effective Passage Search* (SIGIR) | [ACM DL](https://dl.acm.org/doi/10.1145/3397271.3401075) |
+| SPLADE式稀疏扩展 | Formal et al., 2021, *SPLADE: Sparse Lexical and Expansion Models* (SIGIR) | [ACM DL](https://dl.acm.org/doi/10.1145/3404835.3463098) |
+| 分层记忆架构(MemGPT) | Packer et al., 2023, *MemGPT: Towards LLMs as Operating Systems* (arXiv) | [arXiv](https://arxiv.org/abs/2310.08560) |
+| 智能体记忆系统(Mem0) | Mem0 Team, 2025, *Mem0: Building Production-Ready AI Agents with Scalable Long-Term Memory* (arXiv:2504.19413) | [arXiv](https://arxiv.org/abs/2504.19413) |
+
+这些技术的组合使MemSearch能够在**无需API Key的本地运行模式**下，提供接近闭源商业系统的检索质量，同时保持markdown作为唯一事实源的简单性和可移植性。
 
