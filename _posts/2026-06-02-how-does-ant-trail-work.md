@@ -108,13 +108,42 @@ service:
 
 Congratulations! We finally finished configuring everything.
 
-We can start the whole system with the following command. The password is the user password for your opengauss user.
+We can start the whole system with the following command.
 
 ```bash
 bash deploy.sh -password "YoUrpassWord$%23"
 ```
 
+The password is the user password for your opengauss user `gaussdb`. The script will set the password so that the `connection_string` you set earlier works properly.
+
 If things went wrong, you can run `bash deploy.sh cleanup` to remove the containers and startover.
 
 > The cleanup script will only remove the containers but not delete the folder. So your AGFS folder and OpenClaw home folder are still there. If you want to start from fresh, manually remove those folders.
 {: .prompt-warning }
+
+### Deploy AntTrail locally without containers
+
+This part is still under investigation.
+
+## Run the LoCoMo benchmark with AntTrail
+
+Clone [this repo](https://gitcode.com/weixin_44204324/locomo-eval-kit.git) for locomo evaluation.
+
+There are several environment variables need to be set. So I create a `env.sh` file that can be sourced later.
+
+```bash
+export OPENAI_API_KEY="sk-cp-THE_REST_OF_YOUR_API_KEY"
+export OPENAI_BASE_URL="https://api.minimaxi.com/v1"
+export OPENCLAW_STATE_DIR=/home/yuanjian/Development/memory-projects/openclaw_dir
+export JUDGE_MODEL="MiniMax-M2.7"
+export OPENCLAW_GATEWAY_TOKEN="ogmem-default-token"
+```
+
+To start the evaluation, go into the scripts folder and run the following command. Remember to source `env.sh` or set the environment variabels manually before running the following command.
+
+```bash
+bash run_eval_small.sh --import-mode claw --gateway-url http://127.0.0.1:34589 --force-ingest --gateway-token "$OPENCLAW_GATEWAY_TOKEN"
+```
+
+The port is `GATEWAY_PORT` you set in the `deploy.env` file.
+
