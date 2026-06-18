@@ -53,6 +53,9 @@ LLM_MODEL="MiniMax-M2.7"
 
 The embedding model needs to separately be set if you have a different provider. Find the following configuration in `ogmemory.yaml` and set it accordingly.
 
+> If your coding plan does not support an embedding model, we can deploy a model locally. I provide a deployment script in [locomo-test](https://github.com/legendPerceptor/locomo-test). Read the next section to see the details on how to deploy a local embedding model for locomo test.
+{: .prompt-tip }
+
 ```yaml
 embedding:
   provider: volcengine
@@ -116,34 +119,131 @@ bash deploy.sh -password "YoUrpassWord$%23"
 
 The password is the user password for your opengauss user `gaussdb`. The script will set the password so that the `connection_string` you set earlier works properly.
 
-If things went wrong, you can run `bash deploy.sh cleanup` to remove the containers and startover.
+If things went wrong, you can run `bash deploy.sh --cleanup` to remove the containers and startover.
 
 > The cleanup script will only remove the containers but not delete the folder. So your AGFS folder and OpenClaw home folder are still there. If you want to start from fresh, manually remove those folders.
 {: .prompt-warning }
+
+Inside the `$OGMEM_CONTAINER_NAME` container, the config file is under `/etc/ogmem/config.yaml`. After cleanup and restart, better check whether the config file inside the container is up to date. Also, remember to check the environment variables like `LLM_API_KEY`, `LLM_BASE_URL`, as they will only be sent in once when the container was initially created.
+
 
 ### Deploy AntTrail locally without containers
 
 This part is still under investigation.
 
-## Run the LoCoMo benchmark with AntTrail
+## Run the LoCoMo benchmark with AntTrail (deployed in the containers)
 
-Clone [this repo](https://gitcode.com/weixin_44204324/locomo-eval-kit.git) for locomo evaluation.
+Clone [locomo-test](https://github.com/legendPerceptor/locomo-test) for locomo evaluation. I added scripts for locally deploying a lightweight embedding model, so that you can finish the LoCoMo test with just your coding plan from GLM/MiniMax/OpenAI.
 
-There are several environment variables need to be set. So I create a `env.sh` file that can be sourced later.
+### Configurations for LoCoMo
+
+There are several configurations that need to be set.
+
+**Step 1**: Copy the `env.toml.example` file to `env.toml` and configure it according to the comments.
+
+The `state_dir` is your openclaw home folder on your host machine. The ogmem token is not set previously, so leave it as `ogmem-default-token`.
+
+The `judge` is an LLM model that judges the accuracy of your agent. You can use the same model from your coding plan or another more standard model, e.g. GPT-4o.
+
+The `ogmem` configuration is where you deployed your ogmem. This LoCoMo test only supports containerized deployment.
+
+> Ensure the gateway port and oGMemory HTTP port are configured to your previously set ports.
+{: .prompt-tip }
+
+**Step 2**: Create a `ogmem-small.toml` file from `test.toml.example`. This is to configure the dataset --- we can either use `small` or `locomo10` for the test. Change the `output_dir` to your own directory. All the test results will be saved in this directory.
 
 ```bash
-export OPENAI_API_KEY="sk-cp-THE_REST_OF_YOUR_API_KEY"
-export OPENAI_BASE_URL="https://api.minimaxi.com/v1"
-export OPENCLAW_STATE_DIR=/home/yuanjian/Development/memory-projects/openclaw_dir
-export JUDGE_MODEL="MiniMax-M2.7"
-export OPENCLAW_GATEWAY_TOKEN="ogmem-default-token"
+[general]
+name = "ogmem-small"
+env_file = "env.toml"
+dataset = "small"
+memory_mode = "ogmem"
+parallel = 1
+user = "ogmem-small"
+agent_id = "main"
+output_dir = "/home/yuanjian/Development/memory-projects/memory-systems/locomo-test/test_results"
+
+[session]
+policy = "isolated"
+
+[steps]
+health_check = true
+ingest = true
+qa = true
+judge = true
+stats = true
 ```
 
-To start the evaluation, go into the scripts folder and run the following command. Remember to source `env.sh` or set the environment variabels manually before running the following command.
+(Optional) **Step 3**: Many coding plan does not contain an embedding model. So we can locally deploy an embedding model. I provide a script `deploy_model.py` for this purpose.
+
+You can start the model and monitor its response with the following command (Use any port you want that does not conflict with existing services). The script will download `BAAI/bge-large-zh-v1.5` via `SentenceTransformer` by default. You can also configure the model via `--model` parameter.
 
 ```bash
-bash run_eval_small.sh --import-mode claw --gateway-url http://127.0.0.1:34589 --force-ingest --gateway-token "$OPENCLAW_GATEWAY_TOKEN"
+uv run deploy_model.py --port 34642
 ```
 
-The port is `GATEWAY_PORT` you set in the `deploy.env` file.
+After the model starts, you can use the following command to test if your embedding model works properly. The dimension and model name need to be put into the configuration file.
+
+```bash
+curl -sS http://127.0.0.1:34642/v1/embeddings \
+    -H "Authorization: Bearer dummy" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "input": "你好世界",
+      "model": "bge-large-zh-v1.5"
+    }' | python3 -c "
+  import json, sys, math
+  try:
+      data = json.load(sys.stdin)
+      if 'error' in data:
+          print('ERROR:', data['error'])
+          sys.exit(1)
+      emb = data['data'][0]['embedding']
+      print(f'model        : {data[\"model\"]}')
+      print(f'object       : {data[\"object\"]}')
+      print(f'usage tokens : {data[\"usage\"][\"prompt_tokens\"]}')
+      print(f'dimension    : {len(emb)}')
+      print(f'first 8 vals : {[round(x, 6) for x in emb[:8]]}')
+      print(f'last 4 vals  : {[round(x, 6) for x in emb[-4:]]}')
+      norm = math.sqrt(sum(x*x for x in emb))
+      print(f'L2 norm      : {norm:.6f}')
+  except Exception as e:
+      print('Parse failed:', e)
+      print('raw response:')
+      print(sys.stdin.read())
+  "
+```
+
+### Run the LoCoMo test
+
+```bash
+# Check if the services are ready first
+uv run python -m locomo_test.cli check configs/ogmem-small.toml
+# Run the actual tests
+uv run python -m locomo_test.cli run configs/ogmem-small.toml
+```
+
+Four files will be saved to the `output_dir`. You can look at the `pipeline.log` file to see the summarized results, and analyze `qa_result.csv` to see which questions are answered wrong and why.
+
+### Clean AntTrail for a new run
+
+First, stop the containers. Go to the `deploy` folder in the AntTrail's repo.
+
+```bash
+sudo bash deploy.sh --cleanup
+```
+
+This steps will stop all the containers. Next, clean the AGFS and openclaw folders. To rebuild everything, delete these two folders completely.
+
+If `deploy.env` was not changed, you can go to `locomo-test` repo folder and run `uv run app.py clean` or just `bash clean.sh`. The script will delete the sessions instead of the entire openclaw folder.
+
+Moreover, remember to delete the vectors stored in OpenGauss. The `bash deploy.sh --cleanup` command should have recreated the container so the database should be clean. But it is good to double check.
+
+```bash
+docker container exec -u omm -it opengauss_yuanjian /bin/bash
+gsql -U gaussdb -d postgres -W Zhanlu12#$ -r
+# in the gsql
+TRUNCATE TABLE vector_index;
+```
+
 
