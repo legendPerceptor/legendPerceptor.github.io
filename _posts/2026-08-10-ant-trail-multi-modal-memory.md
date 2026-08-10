@@ -190,7 +190,7 @@ Inside the configs folder, we need to create `env.toml` and `ogmem-small.toml` t
 The `env.toml` file defines the gateway port of openclaw, and the access URL for ogmem(AntTrail). These numbers need to match the ports that we will set later in AntTrail.
 
 > This `env.toml` is how we connect to AntTrail. We can come back to set it after configuring AntTrail.
-{: prompt-tip }
+{: .prompt-tip }
 
 ```toml
 [gateway]
@@ -314,6 +314,8 @@ To stop all the containers and delete the volumes, using the following command (
 ```bash
 docker compose -p test_lyj_ant_trail_1 --profile with-db --profile with-openclaw down -v
 ```
+
+> If you forget what project name you specified in -p, use `docker compose ls` to list the projects. The project name has to match to manage containers properly. This setting also help avoid shutting down other users' containers accidentally.
 
 ## Run LoCoMo
 
