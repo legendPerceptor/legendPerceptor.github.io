@@ -513,10 +513,268 @@ public:
  */
 ```
 
-## Dijkstra 最短路径算法和优先队列
+## 最短路径算法和优先队列
 
-最短路径算法其实应该属于一个经典算法，但因为里面必须要用到优先队列，如果不及时复习很容易写不出来，我把它单独放在前面讲解。
+最短路径算法其实应该属于普通的经典算法，但因为里面同时需用到优先队列，如果不及时复习很容易写不出来，我把它单独放在前面讲解。
 
+### Dijkstra 算法
+
+[LeetCode 743. Network Delay Time](https://leetcode.com/problems/network-delay-time/)是一道经典的**边权非负**的最短路径问题，求的是从一个给定点出发发射信号，到所有节点都能收到所需的最短时间。这类问题可以用Dijkstra算法解决。
+
+Dijkstra需要优先队列的原因是**每次需要从当前尚未处理的节点中，找到起点距离最小的节点**，如果每次遍历所有节点取最小值，复杂度为 $O(V^2)$，使用优先队列后，复杂度为 $O((V+E) \log V)$，对于一个连通图，边的数量大于等于V-1，所以这个复杂度可以简记为$O(E \log V)$.
+
+Dijkstra的核心性质是：当前距离最小的节点出堆后，其最短路径已经确定，不会再被后续路径缩短，这一点必须要求边权非负。
+
+Dijkstra找到到某一个点的最短路径和找到到所有点的最短路径所需的流程是一样的。
+
+该算法的通用实现方式如下：
+
+```cpp
+using State = pair<long long, int>;
+// {从起点到当前节点的距离, 当前节点}
+
+std::vector<long long> dijkstra(
+    int start,
+    const std::vector<std::vector<std::pair<int, int>>>& graph
+) {
+    int n = graph.size();
+    const long long INF = std::numeric_limits<long long>::max();
+
+    std::vector<long long> distance(n, INF);
+    distance[start] = 0;
+
+    std::priority_queue<
+        State,
+        std::vector<State>,
+        std::greater<State>
+    > min_heap;
+
+    min_heap.push({0, start});
+
+    while (!min_heap.empty()) {
+        auto [current_distance, node] = min_heap.top();
+        min_heap.pop();
+
+        // 堆中可能存在同一个节点的旧距离
+        if (current_distance > distance[node]) {
+            continue;
+        }
+
+        for (auto [next_node, weight] : graph[node]) {
+            long long new_distance =
+                current_distance + weight;
+
+            if (new_distance < distance[next_node]) {
+                distance[next_node] = new_distance;
+                min_heap.push({
+                    new_distance,
+                    next_node
+                });
+            }
+        }
+    }
+    return distance;
+}
+```
+
+下面是将这个算法用于解决LeetCode 743的完整实现：
+
+```cpp
+class Solution {
+public:
+    const int INF = std::numeric_limits<int>::max();
+    
+    std::vector<int> dijkstra(
+        int start,
+        const std::vector<std::vector<std::pair<int, int>>>& graph
+    ) {
+        int n = graph.size();
+        
+        std::vector<int> distance(n, INF);
+        distance[start] = 0;
+
+        std::priority_queue<
+            std::pair<int, int>,
+            std::vector<std::pair<int, int>>,
+            std::greater<std::pair<int,int>>
+        > min_heap;
+
+        min_heap.push({0, start});
+
+        while(!min_heap.empty()) {
+            auto [current_distance, node] = min_heap.top();
+            min_heap.pop();
+
+            if(current_distance > distance[node]) {
+                continue;
+            }
+
+            for (auto [next_node, weight] : graph[node]) {
+                int new_distance = current_distance + weight;
+                if (new_distance < distance[next_node]) {
+                    distance[next_node] = new_distance;
+                    min_heap.push({new_distance, next_node});
+                }
+            }
+        }
+        return distance;
+    }
+
+    int networkDelayTime(vector<vector<int>>& times, int n, int k) {
+        std::vector<std::vector<std::pair<int, int>>> graph(n);
+        for(const auto& edge : times) {
+            graph[edge[0] - 1].push_back({edge[1] - 1, edge[2]});
+        }
+        auto distances = dijkstra(k - 1, graph);
+        int maximum_distance = 0;
+        for (auto distance : distances) {
+            if (distance == INF) {return -1;}
+            maximum_distance = std::max(maximum_distance, distance);
+        }
+        return maximum_distance;
+    }
+};
+```
+
+如果不仅需要记录最短路径长度，还需要具体的这条路径是什么，需要往里加一个parent来记录。
+
+```cpp
+class Solution {
+public:
+    using Edge = pair<int, int>;
+    // {next_node, weight}
+
+    using State = pair<int, int>;
+    // {distance, node}
+
+    pair<int, vector<int>> shortestPath(
+        int start,
+        int target,
+        const vector<vector<Edge>>& graph
+    ) {
+        int n = static_cast<int>(graph.size());
+        const int INF = numeric_limits<int>::max();
+
+        vector<int> distance(n, INF);
+        vector<int> parent(n, -1);
+
+        priority_queue<
+            State,
+            vector<State>,
+            greater<State>
+        > min_heap;
+
+        distance[start] = 0;
+        min_heap.push({0, start});
+
+        while (!min_heap.empty()) {
+            auto [current_distance, node] = min_heap.top();
+            min_heap.pop();
+
+            if (current_distance > distance[node]) {
+                continue;
+            }
+
+            // target 第一次以有效状态出堆，
+            // 它的最短距离已经确定。
+            if (node == target) {
+                break;
+            }
+
+            for (const auto& [next_node, weight] : graph[node]) {
+                int new_distance =
+                    current_distance + weight;
+
+                if (new_distance < distance[next_node]) {
+                    distance[next_node] = new_distance;
+
+                    // 记录 next_node 是从 node 到达的
+                    parent[next_node] = node;
+
+                    min_heap.push({
+                        new_distance,
+                        next_node
+                    });
+                }
+            }
+        }
+
+        if (distance[target] == INF) {
+            return {-1, {}};
+        }
+
+        vector<int> path;
+
+        // 从终点沿 parent 倒推到起点
+        for (int node = target;
+             node != -1;
+             node = parent[node]) {
+            path.push_back(node);
+        }
+
+        // 当前是 target -> ... -> start，需要反转
+        reverse(path.begin(), path.end());
+
+        return {distance[target], path};
+    }
+};
+```
+
+如果涉及到多条路径还需要，还需要在求解路径的时候用DFS找出所有路径。
+
+```cpp
+// parents的定义变更如下
+vector<vector<int>> parents(n);
+
+// 更新的部分需要在距离相等的时候，将当前节点添加为父节点
+if (new_distance < distance[next_node]) {
+    distance[next_node] = new_distance;
+
+    parents[next_node].clear();
+    parents[next_node].push_back(node);
+
+    min_heap.push({
+        new_distance,
+        next_node
+    });
+} else if (new_distance == distance[next_node]) {
+    parents[next_node].push_back(node);
+}
+
+// 最后计算路径的时候需要用dfs向前回溯
+void buildPaths(
+    int node,
+    int start,
+    const vector<vector<int>>& parents,
+    vector<int>& current_path,
+    vector<vector<int>>& result
+) {
+    current_path.push_back(node);
+
+    if (node == start) {
+        vector<int> path(
+            current_path.rbegin(),
+            current_path.rend()
+        );
+
+        result.push_back(path);
+    } else {
+        for (int previous : parents[node]) {
+            buildPaths(
+                previous,
+                start,
+                parents,
+                current_path,
+                result
+            );
+        }
+    }
+
+    current_path.pop_back();
+}
+```
+
+### 有负边的最短路径
 
 
 ## 经典算法和数据结构
