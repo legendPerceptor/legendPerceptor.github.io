@@ -774,7 +774,152 @@ void buildPaths(
 }
 ```
 
-### 有负边的最短路径
+### 一般Dijkstra无法解决的最短路径问题
+
+[787. Cheapest Flights Within K Stops](https://leetcode.com/problems/cheapest-flights-within-k-stops/description/)，除了要求边权和小，还有轮数限制，用一般的Dijkstra算法就无法解决，因为可能存在这样的情况：
+
+```text
+到达 A：
+
+路径一：价格 100，用 3 条边
+路径二：价格 150，只用了 1 条边
+```
+
+用Dijkstra会选到价格100的路径，但它的边条数超过了限制，不满足要求。这种有额外限制的最短路径问题一般需要使用Bellman-Ford动态规划。
+
+```cpp
+class Solution {
+public:
+    int findCheapestPrice(
+        int n,
+        vector<vector<int>>& flights,
+        int src,
+        int dst,
+        int k
+    ) {
+        const int INF = numeric_limits<int>::max();
+
+        vector<int> distance(n, INF);
+        distance[src] = 0;
+
+        // 最多 K 个中转站，即最多使用 K + 1 条边
+        for (int edges = 0; edges <= k; ++edges) {
+            // 必须复制上一轮结果
+            vector<int> next_distance = distance;
+
+            for (const auto& flight : flights) {
+                int from = flight[0];
+                int to = flight[1];
+                int price = flight[2];
+
+                if (distance[from] == INF) {
+                    continue;
+                }
+
+                next_distance[to] = min(
+                    next_distance[to],
+                    distance[from] + price
+                );
+            }
+
+            distance = std::move(next_distance);
+        }
+
+        return distance[dst] == INF
+            ? -1
+            : distance[dst];
+    }
+};
+```
+
+如果一定要用Dijkstra算法，需要把边作为一个状态存入优先队列，上题的另一种解法如下：
+
+```cpp
+class Solution {
+public:
+    struct State {
+        int cost;
+        int node;
+        int edges;
+
+        bool operator>(const State& other) const {
+            return cost > other.cost;
+        }
+    };
+
+    int findCheapestPrice(
+        int n,
+        vector<vector<int>>& flights,
+        int src,
+        int dst,
+        int k
+    ) {
+        vector<vector<pair<int, int>>> graph(n);
+
+        for (const auto& flight : flights) {
+            int from = flight[0];
+            int to = flight[1];
+            int price = flight[2];
+
+            graph[from].push_back({to, price});
+        }
+
+        int max_edges = k + 1;
+        const int INF = numeric_limits<int>::max();
+
+        // distance[node][edges]:
+        // 恰好使用 edges 条边到达 node 的最低价格
+        vector<vector<int>> distance(
+            n,
+            vector<int>(max_edges + 1, INF)
+        );
+
+        priority_queue<
+            State,
+            vector<State>,
+            greater<State>
+        > min_heap;
+
+        distance[src][0] = 0;
+        min_heap.push({0, src, 0});
+
+        while (!min_heap.empty()) {
+            auto [cost, node, edges] = min_heap.top();
+            min_heap.pop();
+
+            if (cost > distance[node][edges]) {
+                continue;
+            }
+
+            if (node == dst) {
+                return cost;
+            }
+
+            if (edges == max_edges) {
+                continue;
+            }
+
+            for (const auto& [next_node, price] : graph[node]) {
+                int new_cost = cost + price;
+                int new_edges = edges + 1;
+
+                if (new_cost < distance[next_node][new_edges]) {
+                    distance[next_node][new_edges] = new_cost;
+
+                    min_heap.push({
+                        new_cost,
+                        next_node,
+                        new_edges
+                    });
+                }
+            }
+        }
+
+        return -1;
+    }
+};
+```
+
 
 
 ## 经典算法和数据结构
