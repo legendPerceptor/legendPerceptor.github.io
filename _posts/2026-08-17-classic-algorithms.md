@@ -1206,3 +1206,197 @@ public:
 
 前面提到的Three Sum问题是另外一个经典的TwoPointers可以解决的场景。
 
+## 二分查找 - Binary Search
+
+二分查找是看起来简单、实则最容易写错的算法之一。ACM 赛场上"边界条件没写好导致死循环或漏解"几乎是最常见的 bug 之一——核心难点就在 mid 的计算方式和区间的开闭。本节整理三种最常考的二分模板。
+
+### 标准库的三个函数
+
+C++ STL 的 `<algorithm>` 提供了三个核心函数（要求区间已经排好序）：
+
+- `std::binary_search(begin, end, value)`：判断 `value` 是否在区间内，返回 `bool`，时间复杂度 `O(log n)`。
+- `std::lower_bound(begin, end, value)`：返回指向第一个**大于等于** `value` 的元素的迭代器；如果不存在，返回 `end`。
+- `std::upper_bound(begin, end, value)`：返回指向第一个**严格大于** `value` 的元素的迭代器；如果不存在，返回 `end`。
+
+### 手写二分模板
+
+最容易记错的是 mid 的计算和边界收缩，建议背下面两个版本之一：
+
+**版本一：闭区间 `[l, r]`，寻找 target**（target 存在时返回任一下标，不存在返回 -1）
+
+```cpp
+int binarySearch(const std::vector<int>& nums, int target) {
+    int l = 0;
+    int r = static_cast<int>(nums.size()) - 1;
+    while (l <= r) {
+        int mid = l + (r - l) / 2;  // 防止 (l+r) 整数相加溢出
+        if (nums[mid] == target) {
+            return mid;
+        } else if (nums[mid] < target) {
+            l = mid + 1;
+        } else {
+            r = mid - 1;
+        }
+    }
+    return -1;
+}
+```
+
+**版本二：在答案上二分**——找满足谓词 `predicate(x)` 的最小/最大 `x`，关键是 `predicate` 在定义域上**单调**（一段 false 后跟一段 true，或反过来）。
+
+```cpp
+// 寻找最小值 x 使得 predicate(x) == true
+// 假设 predicate 在 [lo, hi] 上是 false ... false true ... true
+int lowerBound(int lo, int hi) {
+    while (lo < hi) {
+        int mid = lo + (hi - lo) / 2;
+        if (predicate(mid)) {
+            hi = mid;        // mid 满足条件，答案在 [lo, mid]
+        } else {
+            lo = mid + 1;    // mid 不满足条件，答案在 [mid+1, hi]
+        }
+    }
+    return lo;
+}
+
+// 寻找最大值 x 使得 predicate(x) == true
+// 假设 predicate 在 [lo, hi] 上是 true ... true false ... false
+int upperBound(int lo, int hi) {
+    while (lo < hi) {
+        int mid = lo + (hi - lo + 1) / 2;  // 向上取整，否则会死循环
+        if (predicate(mid)) {
+            lo = mid;        // mid 满足条件，答案在 [mid, hi]
+        } else {
+            hi = mid - 1;    // mid 不满足条件，答案在 [lo, mid-1]
+        }
+    }
+    return lo;
+}
+```
+
+记忆要点：
+- `mid = lo + (hi - lo) / 2` 而不是 `(lo + hi) / 2` 是为了避免整数相加溢出。
+- 找**最大**满足条件的时候，`mid` 要**向上取整**（`lo + (hi - lo + 1) / 2`），否则 `lo = mid` 不会前进，会死循环。
+- 在答案上二分的核心套路是：**把"求最优"转化为"判定"**——给定一个候选答案，O(n) 或 O(n log n) 判断它是否可行，然后二分搜索最优解。
+
+### 例题 1：寻找目标元素的第一个和最后一个位置
+
+[LeetCode 34. Find First and Last Position of Element in Sorted Array](https://leetcode.com/problems/find-first-and-last-position-of-element-in-sorted-array/)。这题是 `std::lower_bound` 和 `std::upper_bound` 的最佳应用：找到 `target` 第一次出现的位置，就是 `lower_bound(target)`；找到最后一次出现的位置，就是 `upper_bound(target) - 1`。如果两者相等，说明 `target` 不存在。
+
+C++ 实现：
+
+```cpp
+class Solution {
+public:
+    std::vector<int> searchRange(
+        std::vector<int>& nums,
+        int target
+    ) {
+        auto lower = std::lower_bound(
+            nums.begin(), nums.end(), target
+        );
+        auto upper = std::upper_bound(
+            nums.begin(), nums.end(), target
+        );
+
+        if (lower == upper) {
+            return {-1, -1};
+        }
+
+        return {
+            static_cast<int>(lower - nums.begin()),
+            static_cast<int>(upper - nums.begin() - 1)
+        };
+    }
+};
+```
+
+Python 实现（`bisect_left` 和 `bisect_right` 分别对应 `lower_bound` 和 `upper_bound`，两者的差就是 `target` 的出现次数）：
+
+```python
+from typing import List
+from bisect import bisect_left, bisect_right
+
+class Solution:
+    def searchRange(self, nums: List[int], target: int) -> List[int]:
+        lower = bisect.bisect_left(nums, target)
+        upper = bisect.bisect_right(nums, target)
+        if lower == upper:
+            return [-1, -1]
+        
+        return [lower, upper -1]
+```
+
+### 例题 2：在答案上二分
+
+[LeetCode 410. Split Array Largest Sum](https://leetcode.com/problems/split-array-largest-sum/)。这题需要把一个数组分成 `m` 段，让最大的子段和最小。答案是"最大子段和"的最小值，典型的在答案上二分的题目。
+
+我们可以把问题转化为一个判定问题：给定一个最大子段和 `limit`，能不能把数组分成不超过 `m` 段，使得每段的和都不超过 `limit`？这个判定函数是 `O(n)` 的贪心扫描，而 `limit` 的范围是 `[max(nums), sum(nums)]`。对 `limit` 做二分，总复杂度为 `O(n log(sum))`。
+
+C++ 实现：
+
+```cpp
+class Solution {
+public:
+    // 给定 limit，能否把 nums 分成不超过 m 段使得每段和 <= limit
+    bool canSplit(
+        const std::vector<int>& nums,
+        int m,
+        long long limit
+    ) {
+        int pieces = 1;
+        long long current = 0;
+        for (int num : nums) {
+            if (current + num <= limit) {
+                current += num;
+            } else {
+                pieces++;
+                current = num;
+                if (pieces > m) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    int splitArray(
+        std::vector<int>& nums,
+        int m
+    ) {
+        long long lo = *std::max_element(
+            nums.begin(), nums.end()
+        );
+        long long hi = std::accumulate(
+            nums.begin(), nums.end(), 0LL
+        );
+
+        // 寻找最小值 x 使得 canSplit(..., x) == true
+        // canSplit 在 x 上单调：x 越大越容易满足
+        while (lo < hi) {
+            long long mid = lo + (hi - lo) / 2;
+            if (canSplit(nums, m, mid)) {
+                hi = mid;
+            } else {
+                lo = mid + 1;
+            }
+        }
+        return static_cast<int>(lo);
+    }
+};
+```
+
+Python 实现（请自行完成——提示：用 `max(nums)` 作为下界，`sum(nums)` 作为上界，谓词函数写成贪心的 `can_split`，然后套用"在答案上二分"的模板）：
+
+```python
+from typing import List
+
+
+class Solution:
+    def splitArray(self, nums: List[int], m: int) -> int:
+        # TODO: 请实现"在答案上二分"的 splitArray
+        # 1) 写一个 can_split(limit) 函数
+        # 2) 对 [max(nums), sum(nums)] 二分
+        pass
+```
+
