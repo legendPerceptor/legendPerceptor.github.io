@@ -1400,3 +1400,220 @@ class Solution:
         pass
 ```
 
+## 并查集 - Union-Find / DSU
+
+并查集（Disjoint Set Union）是 ACM 比赛中最容易**写不出**的数据结构之一——核心代码只有十几行，但如果没有背下"路径压缩 + 按秩合并"两个优化，临场大概率会写错或者写出退化到 `O(n)` 的版本。它主要用于**处理元素的分组关系**和**判断两个元素是否属于同一组**——典型场景包括：图中的连通分量、岛屿问题、生成树相关（Kruskal）、冗余边检测等。
+
+### 核心数据结构
+
+并查集维护一个森林，每个集合用一棵树表示，根节点是这个集合的"代表"。需要三个关键的状态：
+
+- `parent[i]`：节点 `i` 的父节点（根节点的 `parent` 指向自身）。
+- `rank[i]` 或 `size[i]`：以 `i` 为根的树的深度/大小，用于**按秩合并**。
+- 任意一个"非根"节点都可以通过 `find` 操作回到根。
+
+### 三个基础操作
+
+- `find(x)`：找到 `x` 所在集合的根，**同时把路径上所有节点直接挂到根上**（路径压缩）。
+- `union(x, y)`：合并 `x` 和 `y` 所在的集合。先 `find` 出各自的根，再把秩/大小更小的根挂到更大的根下面（按秩合并）。
+- `connected(x, y)`：等价于 `find(x) == find(y)`。
+
+记忆要点：
+
+1. `find` 必须**带路径压缩**，否则树可能退化成链，时间复杂度退化到 `O(n)`。写法是先递归找根，再把 `parent[x]` 指向根——`return parent[x] = find(parent[x])`。
+2. `union` 必须**按秩合并**：两棵树深度不同时，把深度小的树根指向深度大的树根；如果深度相同，新根的深度加 1。这样能保证树的高度是 `O(log n)`。
+3. 路径压缩 + 按秩合并后，单次操作均摊复杂度为 `O(α(n))`，其中 `α` 是反阿克曼函数，实际使用中可以视为常数。
+
+### 模板代码
+
+```cpp
+class DSU {
+public:
+    std::vector<int> parent;
+    std::vector<int> rank_;
+
+    DSU(int n) {
+        parent.resize(n);
+        rank_.assign(n, 0);
+        for (int i = 0; i < n; ++i) {
+            parent[i] = i;
+        }
+    }
+
+    int find(int x) {
+        if (parent[x] != x) {
+            parent[x] = find(parent[x]);  // 路径压缩
+        }
+        return parent[x];
+    }
+
+    void unite(int x, int y) {
+        int rx = find(x);
+        int ry = find(y);
+        if (rx == ry) {
+            return;
+        }
+        // 按秩合并
+        if (rank_[rx] < rank_[ry]) {
+            std::swap(rx, ry);
+        }
+        parent[ry] = rx;
+        if (rank_[rx] == rank_[ry]) {
+            rank_[rx]++;
+        }
+    }
+
+    bool connected(int x, int y) {
+        return find(x) == find(y);
+    }
+};
+```
+
+### 例题 1：省份数量
+
+[LeetCode 547. Number of Provinces](https://leetcode.com/problems/number-of-provinces/)。这题是并查集的最直接应用：给定城市之间的邻接矩阵，求连通分量的数量。遍历邻接矩阵，把每对相连的城市 `unite` 起来，最后统计有多少个节点的 `parent[i] == i`（即根的数量）。
+
+C++ 实现：
+
+```cpp
+class DSU {
+public:
+    std::vector<int> parent;
+    std::vector<int> rank_;
+
+    DSU(int n) : parent(n), rank_(n, 0) {
+        for (int i = 0; i < n; ++i) {
+            parent[i] = i;
+        }
+    }
+
+    int find(int x) {
+        if (parent[x] != x) {
+            parent[x] = find(parent[x]);
+        }
+        return parent[x];
+    }
+
+    void unite(int x, int y) {
+        int rx = find(x);
+        int ry = find(y);
+        if (rx == ry) return;
+        if (rank_[rx] < rank_[ry]) std::swap(rx, ry);
+        parent[ry] = rx;
+        if (rank_[rx] == rank_[ry]) rank_[rx]++;
+    }
+};
+
+class Solution {
+public:
+    int findCircleNum(std::vector<std::vector<int>>& isConnected) {
+        int n = isConnected.size();
+        DSU dsu(n);
+        for (int i = 0; i < n; ++i) {
+            for (int j = i + 1; j < n; ++j) {
+                if (isConnected[i][j] == 1) {
+                    dsu.unite(i, j);
+                }
+            }
+        }
+        int provinces = 0;
+        for (int i = 0; i < n; ++i) {
+            if (dsu.find(i) == i) {
+                provinces++;
+            }
+        }
+        return provinces;
+    }
+};
+```
+
+Python 实现（请自行完成——提示：可以用 `list` 当 `parent`，或者直接用 Python 自带的字典记录父节点；记得在 `find` 时做路径压缩）：
+
+```python
+from typing import List
+
+
+class DSU:
+    def __init__(self, n: int):
+        # TODO: 初始化 parent 和 rank_
+        pass
+
+    def find(self, x: int) -> int:
+        # TODO: 带路径压缩的 find
+        pass
+
+    def unite(self, x: int, y: int) -> None:
+        # TODO: 按秩合并
+        pass
+
+
+class Solution:
+    def findCircleNum(self, isConnected: List[List[int]]) -> int:
+        # TODO: 调用 DSU，统计根节点数量
+        pass
+```
+
+### 例题 2：冗余连接
+
+[LeetCode 684. Redundant Connection](https://leetcode.com/problems/redundant-connection/)。这题给一棵树加上一条边后形成了带环的图，要求找到这条多余的边。思路：依次尝试加入每条边，加入前如果发现两个节点已经连通（即 `find(x) == find(y)`），说明这条边会形成环，它就是要找的冗余边。
+
+C++ 实现：
+
+```cpp
+class Solution {
+public:
+    std::vector<int> parent;
+    std::vector<int> rank_;
+
+    int find(int x) {
+        if (parent[x] != x) {
+            parent[x] = find(parent[x]);
+        }
+        return parent[x];
+    }
+
+    bool unite(int x, int y) {
+        int rx = find(x);
+        int ry = find(y);
+        if (rx == ry) {
+            return false;  // 已在同一集合
+        }
+        if (rank_[rx] < rank_[ry]) std::swap(rx, ry);
+        parent[ry] = rx;
+        if (rank_[rx] == rank_[ry]) rank_[rx]++;
+        return true;
+    }
+
+    std::vector<int> findRedundantConnection(
+        std::vector<std::vector<int>>& edges
+    ) {
+        int n = edges.size();
+        parent.resize(n + 1);
+        rank_.assign(n + 1, 0);
+        for (int i = 0; i <= n; ++i) parent[i] = i;
+
+        for (const auto& edge : edges) {
+            if (!unite(edge[0], edge[1])) {
+                return edge;  // 这条边会造成环
+            }
+        }
+        return {};
+    }
+};
+```
+
+Python 实现（请自行完成——提示：`unite` 在加入一条边之前如果发现两个节点已连通，就返回这条边本身）：
+
+```python
+from typing import List
+
+
+class Solution:
+    def findRedundantConnection(self, edges: List[List[int]]) -> List[int]:
+        # TODO:
+        # 1) 实现一个轻量的 DSU（parent list + find + unite）
+        # 2) 遍历 edges，第一次让 unite 返回 False 时返回当前边
+        pass
+```
+```
+
