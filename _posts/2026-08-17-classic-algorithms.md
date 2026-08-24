@@ -720,7 +720,7 @@ public:
 };
 ```
 
-如果涉及到多条路径还需要，还需要在求解路径的时候用DFS找出所有路径。
+如果涉及到多条路径还需要求解路径的时候用DFS找出所有路径。
 
 ```cpp
 // parents的定义变更如下
@@ -921,6 +921,1073 @@ public:
 ```
 
 
+
+## 滑动窗口 - Sliding Window
+
+滑动窗口是双指针技巧的延伸，专门处理"数组/字符串的连续子区间"问题。核心是用左右两个指针维护一个窗口 `[l, r]`，根据约束条件动态调整窗口大小，把 O(n²) 的枚举优化到 O(n)。如果临场想不起来，每次只能 O(n) 重算窗口状态，很容易超时。
+
+滑动窗口分为两类：
+- **定长窗口**：窗口大小固定为 K（如"长度为 K 的子数组最大和"、"字符串的排列"）。
+- **变长窗口**：窗口大小由约束条件动态决定，找到满足约束的"最长"或"最短"子区间。
+
+### 变长窗口的两套模板
+
+**找最长**（窗口内不满足约束时一直收缩）：
+
+```cpp
+int l = 0, ans = 0;
+std::unordered_map<char, int> cnt;
+for (int r = 0; r < n; ++r) {
+    cnt[s[r]]++;
+    while (窗口不满足约束) {
+        if (--cnt[s[l]] == 0) cnt.erase(s[l]);
+        ++l;
+    }
+    ans = std::max(ans, r - l + 1);
+}
+```
+
+**找最短**（窗口内满足约束时一直收缩）：
+
+```cpp
+int l = 0, ans = INT_MAX;
+std::unordered_map<char, int> cnt;
+int formed = 0;  // 已满足 need 数量要求的字符种类数
+for (int r = 0; r < n; ++r) {
+    cnt[s[r]]++;
+    if (cnt[s[r]] == need[s[r]]) ++formed;
+    while (formed == required) {
+        ans = std::min(ans, r - l + 1);
+        if (--cnt[s[l]] < need[s[l]]) --formed;
+        ++l;
+    }
+}
+```
+
+记忆要点：
+1. **定长窗口**先初始化前 K 个元素，再循环 `n - K` 次，每次"出左入右"。
+2. 变长窗口的 while 条件是核心——"找最长"用"不满足就收缩"，"找最短"用"满足就收缩"。
+3. 窗口状态的加入和移除要严格对称，缺一就会出错。
+4. 字符类问题优先用 `int cnt[128]` 数组，比 unordered_map 快得多。
+
+### 例题 1：最长无重复子串
+
+[LC 3. Longest Substring Without Repeating Characters](https://leetcode.com/problems/longest-substring-without-repeating-characters/)。变长窗口的入门题：找到不含重复字符的最长子串。
+
+```cpp
+class Solution {
+public:
+    int lengthOfLongestSubstring(string s) {
+        std::vector<int> last(128, -1);
+        int ans = 0;
+        int l = 0;
+        for (int r = 0; r < (int)s.size(); ++r) {
+            unsigned char c = s[r];
+            if (last[c] >= l) {
+                l = last[c] + 1;
+            }
+            last[c] = r;
+            ans = std::max(ans, r - l + 1);
+        }
+        return ans;
+    }
+};
+```
+
+```python
+class Solution:
+    def lengthOfLongestSubstring(self, s: str) -> int:
+        last = {}
+        ans = 0
+        l = 0
+        for r, c in enumerate(s):
+            if c in last and last[c] >= l:
+                l = last[c] + 1
+            last[c] = r
+            ans = max(ans, r - l + 1)
+        return ans
+```
+
+这题有一个常数优化的写法：不用哈希表，而是用 `int last[128]` 数组记录字符 c 上次出现的下标。如果上次出现的下标在窗口内，就把 l 跳到它的下一个位置。这种写法比纯哈希表更快。
+
+### 例题 2：最小覆盖子串
+
+[LC 76. Minimum Window Substring](https://leetcode.com/problems/minimum-window-substring/)。变长窗口找最短的经典题：找到包含 t 所有字符的 s 的最短子串。
+
+```cpp
+class Solution {
+public:
+    string minWindow(string s, string t) {
+        std::vector<int> need(128, 0);
+        for (char c : t) need[(unsigned char)c]++;
+
+        int required = 0;
+        for (int c : need) if (c > 0) ++required;
+
+        std::vector<int> window(128, 0);
+        int formed = 0;
+        int l = 0;
+        int min_len = INT_MAX;
+        int min_l = 0;
+
+        for (int r = 0; r < (int)s.size(); ++r) {
+            unsigned char c = s[r];
+            if (++window[c] == need[c]) ++formed;
+
+            while (formed == required && l <= r) {
+                if (r - l + 1 < min_len) {
+                    min_len = r - l + 1;
+                    min_l = l;
+                }
+                unsigned char cl = s[l];
+                if (--window[cl] < need[cl]) --formed;
+                ++l;
+            }
+        }
+        return min_len == INT_MAX ? "" : s.substr(min_l, min_len);
+    }
+};
+```
+
+```python
+from collections import Counter
+
+class Solution:
+    def minWindow(self, s: str, t: str) -> str:
+        need = Counter(t)
+        required = len(need)
+        formed = 0
+        window = {}
+        l = 0
+        min_len = float('inf')
+        min_l = 0
+
+        for r, c in enumerate(s):
+            window[c] = window.get(c, 0) + 1
+            if c in need and window[c] == need[c]:
+                formed += 1
+
+            while formed == required and l <= r:
+                if r - l + 1 < min_len:
+                    min_len = r - l + 1
+                    min_l = l
+                cl = s[l]
+                window[cl] -= 1
+                if cl in need and window[cl] < need[cl]:
+                    formed -= 1
+                l += 1
+
+        return "" if min_len == float('inf') else s[min_l:min_l + min_len]
+```
+
+记忆要点：
+- `formed` 表示窗口内已经"满足 need 中字符数量要求"的字符种类数。
+- 当 `formed == required` 时窗口内包含了所有需要的字符，可以尝试收缩。
+- 收缩过程中可能破坏约束，每次 `window[c]--` 后都要判断 `window[c] < need[c]`。
+
+### 例题 3：字符串的排列
+
+[LC 567. Permutation in String](https://leetcode.com/problems/permutation-in-string/)。定长窗口：判断 s2 是否包含 s1 的某个排列（即 s2 中是否存在长度为 |s1| 的窗口，字符计数和 s1 完全一致）。
+
+```cpp
+class Solution {
+public:
+    bool checkInclusion(string s1, string s2) {
+        int n = s1.size();
+        if (n > (int)s2.size()) return false;
+
+        std::vector<int> cnt1(26, 0), cnt2(26, 0);
+        for (int i = 0; i < n; ++i) {
+            cnt1[s1[i] - 'a']++;
+            cnt2[s2[i] - 'a']++;
+        }
+        if (cnt1 == cnt2) return true;
+
+        for (int r = n; r < (int)s2.size(); ++r) {
+            cnt2[s2[r] - 'a']++;
+            cnt2[s2[r - n] - 'a']--;
+            if (cnt1 == cnt2) return true;
+        }
+        return false;
+    }
+};
+```
+
+```python
+class Solution:
+    def checkInclusion(self, s1: str, s2: str) -> bool:
+        n = len(s1)
+        if n > len(s2):
+            return False
+        cnt1 = [0] * 26
+        cnt2 = [0] * 26
+        for i in range(n):
+            cnt1[ord(s1[i]) - ord('a')] += 1
+            cnt2[ord(s2[i]) - ord('a')] += 1
+        if cnt1 == cnt2:
+            return True
+        for r in range(n, len(s2)):
+            cnt2[ord(s2[r]) - ord('a')] += 1
+            cnt2[ord(s2[r - n]) - ord('a')] -= 1
+            if cnt1 == cnt2:
+                return True
+        return False
+```
+
+记忆要点：定长窗口的循环只走 `n - 1` 次（从 `r = n` 到末尾），每次循环把 `r` 处字符入窗，把 `r - n` 处字符出窗。
+
+## BFS - 广度优先搜索
+
+BFS 适合"层序遍历"和"无权图最短路"两类问题，核心是用队列维护"待访问节点"，按"由近及远"的顺序访问。和 DFS 相比，BFS 的特点是可以方便地按层处理（每层节点共享同一个距离），代价是要维护一个队列和 visited 集合。
+
+如果临场写不出 BFS 模板，主要是因为漏了 visited 标记，导致队列无限增长。
+
+### 通用模板
+
+```cpp
+std::queue<State> q;
+std::unordered_set<State> visited;
+q.push(start);
+visited.insert(start);
+
+while (!q.empty()) {
+    State cur = q.front();
+    q.pop();
+    // 处理 cur
+
+    for (State next : neighbors(cur)) {
+        if (!visited.count(next)) {
+            visited.insert(next);
+            q.push(next);
+        }
+    }
+}
+```
+
+层序 BFS（一次处理一层）：
+
+```cpp
+while (!q.empty()) {
+    int size = q.size();  // 一次性取出一整层
+    for (int i = 0; i < size; ++i) {
+        State cur = q.front();
+        q.pop();
+        // 处理 cur，把邻居 push 进队列
+    }
+    // 一层结束，更新层数
+}
+```
+
+多源 BFS（从多个起点同时出发）：把所有起点一次性 push 进队列即可。
+
+记忆要点：
+1. **`visited` 不能漏！** 没有 visited 的话，环或者重复边会让队列无限增长。
+2. 层序 BFS 通过 `int size = q.size()` 一次性取出一整层，这是层序遍历和最短路的关键。
+3. 多源 BFS 的初始化就是把所有起点都 push 到队列里，跑法和单源完全一样。
+4. BFS 求无权图最短路时，节点"第一次出队"的距离就是最短距离。
+
+### 例题 1：二叉树的层序遍历
+
+[LC 102. Binary Tree Level Order Traversal](https://leetcode.com/problems/binary-tree-level-order-traversal/)。BFS 的基础应用：按层输出二叉树节点。
+
+```cpp
+class Solution {
+public:
+    vector<vector<int>> levelOrder(TreeNode* root) {
+        vector<vector<int>> ans;
+        if (!root) return ans;
+
+        queue<TreeNode*> q;
+        q.push(root);
+
+        while (!q.empty()) {
+            int size = q.size();
+            vector<int> level;
+            for (int i = 0; i < size; ++i) {
+                TreeNode* cur = q.front();
+                q.pop();
+                level.push_back(cur->val);
+                if (cur->left)  q.push(cur->left);
+                if (cur->right) q.push(cur->right);
+            }
+            ans.push_back(level);
+        }
+        return ans;
+    }
+};
+```
+
+```python
+from collections import deque
+from typing import Optional, List
+
+class TreeNode:
+    def __init__(self, val=0, left=None, right=None):
+        self.val = val
+        self.left = left
+        self.right = right
+
+class Solution:
+    def levelOrder(self, root: Optional[TreeNode]) -> List[List[int]]:
+        ans = []
+        if not root:
+            return ans
+        q = deque([root])
+        while q:
+            level = []
+            for _ in range(len(q)):
+                cur = q.popleft()
+                level.append(cur.val)
+                if cur.left:
+                    q.append(cur.left)
+                if cur.right:
+                    q.append(cur.right)
+            ans.append(level)
+        return ans
+```
+
+记忆要点：层序遍历模板就是 `size = q.size()`（C++）/`len(q)`（Python）取整层大小，循环结束就代表一层走完。
+
+### 例题 2：岛屿数量
+
+[LC 200. Number of Islands](https://leetcode.com/problems/number-of-islands/)。网格 BFS 的经典题：统计 '1' 相连的连通分量数。
+
+```cpp
+class Solution {
+public:
+    int numIslands(vector<vector<char>>& grid) {
+        int m = grid.size(), n = grid[0].size();
+        int ans = 0;
+        std::queue<std::pair<int, int>> q;
+        std::vector<std::pair<int, int>> dirs;
+        dirs.push_back({-1, 0});
+        dirs.push_back({1, 0});
+        dirs.push_back({0, -1});
+        dirs.push_back({0, 1});
+
+        for (int i = 0; i < m; ++i) {
+            for (int j = 0; j < n; ++j) {
+                if (grid[i][j] != '1') continue;
+                ++ans;
+                q.push({i, j});
+                grid[i][j] = '0';  // 直接把访问过的格子置 0 当 visited
+
+                while (!q.empty()) {
+                    auto [x, y] = q.front();
+                    q.pop();
+                    for (auto [dx, dy] : dirs) {
+                        int nx = x + dx, ny = y + dy;
+                        if (nx >= 0 && nx < m && ny >= 0 && ny < n
+                            && grid[nx][ny] == '1') {
+                            grid[nx][ny] = '0';
+                            q.push({nx, ny});
+                        }
+                    }
+                }
+            }
+        }
+        return ans;
+    }
+};
+```
+
+```python
+from collections import deque
+from typing import List
+
+class Solution:
+    def numIslands(self, grid: List[List[str]]) -> int:
+        m, n = len(grid), len(grid[0])
+        ans = 0
+        q = deque()
+        dirs = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+
+        for i in range(m):
+            for j in range(n):
+                if grid[i][j] != '1':
+                    continue
+                ans += 1
+                q.append((i, j))
+                grid[i][j] = '0'
+
+                while q:
+                    x, y = q.popleft()
+                    for dx, dy in dirs:
+                        nx, ny = x + dx, y + dy
+                        if 0 <= nx < m and 0 <= ny < n and grid[nx][ny] == '1':
+                            grid[nx][ny] = '0'
+                            q.append((nx, ny))
+        return ans
+```
+
+记忆要点：在网格上做 BFS 时，**直接把访问过的格子改成 '0'** 就能省掉一个 visited 数组，这种"原地修改做 visited"的技巧在网格题里非常常用。
+
+### 例题 3：腐烂的橘子
+
+[LC 994. Rotting Oranges](https://leetcode.com/problems/rotting-oranges/)。多源 BFS 的入门题：每分钟腐烂橘子会感染上下左右相邻的新鲜橘子，问几分钟所有橘子都腐烂（或返回 -1 表示不可能）。
+
+```cpp
+class Solution {
+public:
+    int orangesRotting(vector<vector<int>>& grid) {
+        int m = grid.size(), n = grid[0].size();
+        std::queue<std::pair<int, int>> q;
+        int fresh = 0;
+
+        for (int i = 0; i < m; ++i) {
+            for (int j = 0; j < n; ++j) {
+                if (grid[i][j] == 2) q.push({i, j});
+                else if (grid[i][j] == 1) ++fresh;
+            }
+        }
+
+        if (fresh == 0) return 0;
+
+        int minutes = 0;
+        std::vector<std::pair<int, int>> dirs;
+        dirs.push_back({-1, 0});
+        dirs.push_back({1, 0});
+        dirs.push_back({0, -1});
+        dirs.push_back({0, 1});
+
+        while (!q.empty()) {
+            int size = q.size();
+            for (int i = 0; i < size; ++i) {
+                auto [x, y] = q.front();
+                q.pop();
+                for (auto [dx, dy] : dirs) {
+                    int nx = x + dx, ny = y + dy;
+                    if (nx >= 0 && nx < m && ny >= 0 && ny < n
+                        && grid[nx][ny] == 1) {
+                        grid[nx][ny] = 2;
+                        q.push({nx, ny});
+                        --fresh;
+                    }
+                }
+            }
+            ++minutes;
+        }
+
+        return fresh == 0 ? minutes - 1 : -1;
+    }
+};
+```
+
+```python
+from collections import deque
+from typing import List
+
+class Solution:
+    def orangesRotting(self, grid: List[List[int]]) -> int:
+        m, n = len(grid), len(grid[0])
+        q = deque()
+        fresh = 0
+
+        for i in range(m):
+            for j in range(n):
+                if grid[i][j] == 2:
+                    q.append((i, j))
+                elif grid[i][j] == 1:
+                    fresh += 1
+
+        if fresh == 0:
+            return 0
+
+        minutes = 0
+        dirs = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+
+        while q:
+            for _ in range(len(q)):
+                x, y = q.popleft()
+                for dx, dy in dirs:
+                    nx, ny = x + dx, y + dy
+                    if 0 <= nx < m and 0 <= ny < n and grid[nx][ny] == 1:
+                        grid[nx][ny] = 2
+                        q.append((nx, ny))
+                        fresh -= 1
+            minutes += 1
+
+        return minutes - 1 if fresh == 0 else -1
+```
+
+记忆要点：
+- 多源 BFS 的初始化：把所有腐烂的橘子都 push 进队列。
+- 每一轮 BFS 表示"经过了一分钟"，所以 `minutes` 在每轮结束后加 1。
+- 最后需要返回 `minutes - 1`，因为最后一轮"没有新的橘子被感染"也计入了一次循环（哨兵轮），如果 fresh 不为 0 则说明存在无法腐烂的橘子，返回 -1。
+
+## DFS - 深度优先搜索
+
+DFS 和 BFS 是图遍历的两大基础，但风格迥异——DFS 倾向于"一条路走到底再回溯"，常用于树/网格的递归处理。和 BFS 相比，DFS 写起来更简洁（天然递归），缺点是不容易控制层数。
+
+临场写不出 DFS 通常是因为递归三要素没记牢：**终止条件、状态修改、状态撤销**。尤其是带回溯的 DFS，"撤销"一步漏了就会得到错误答案。
+
+### 递归 DFS 模板
+
+```cpp
+void dfs(State cur, ...) {
+    if (终止条件) {
+        // 处理答案或返回结果
+        return;
+    }
+    for (State next : neighbors(cur)) {
+        if (跳过条件) continue;
+        // 修改状态（如果是回溯）
+        dfs(next, ...);
+        // 撤销修改（如果是回溯）
+    }
+}
+```
+
+### 迭代 DFS 模板（用显式栈）
+
+```cpp
+std::stack<State> stk;
+stk.push(start);
+visited.insert(start);
+
+while (!stk.empty()) {
+    State cur = stk.top();
+    stk.pop();
+    // 处理 cur
+    for (State next : neighbors(cur)) {
+        if (!visited.count(next)) {
+            visited.insert(next);
+            stk.push(next);
+        }
+    }
+}
+```
+
+记忆要点：
+1. 递归 DFS 一定要有**终止条件**（base case），否则会栈溢出。
+2. "修改状态 + 递归 + 撤销修改" 三个动作必须严格配对——这就是**回溯**的核心。
+3. 网格 DFS 通常要把访问过的格子做标记（原地改成 '0' 或 '#'），避免重复访问。
+4. 迭代 DFS 的访问顺序和递归 DFS 略有不同（栈是 LIFO），但都能遍历所有节点。
+
+### 例题 1：岛屿最大面积
+
+[LC 695. Max Area of Island](https://leetcode.com/problems/max-area-of-island/)。网格 DFS 的基础题：求 '1' 连通区域的最大面积。
+
+```cpp
+class Solution {
+public:
+    int maxAreaOfIsland(vector<vector<int>>& grid) {
+        int m = grid.size(), n = grid[0].size();
+        int ans = 0;
+
+        for (int i = 0; i < m; ++i) {
+            for (int j = 0; j < n; ++j) {
+                if (grid[i][j] == 1) {
+                    ans = std::max(ans, dfs(grid, i, j));
+                }
+            }
+        }
+        return ans;
+    }
+
+    int dfs(vector<vector<int>>& grid, int i, int j) {
+        int m = grid.size(), n = grid[0].size();
+        if (i < 0 || i >= m || j < 0 || j >= n || grid[i][j] != 1) return 0;
+        grid[i][j] = 0;  // 标记访问，避免回环
+        return 1 + dfs(grid, i + 1, j) + dfs(grid, i - 1, j)
+                 + dfs(grid, i, j + 1) + dfs(grid, i, j - 1);
+    }
+};
+```
+
+```python
+from typing import List
+
+class Solution:
+    def maxAreaOfIsland(self, grid: List[List[int]]) -> int:
+        m, n = len(grid), len(grid[0])
+
+        def dfs(i: int, j: int) -> int:
+            if i < 0 or i >= m or j < 0 or j >= n or grid[i][j] != 1:
+                return 0
+            grid[i][j] = 0
+            return 1 + dfs(i + 1, j) + dfs(i - 1, j) + dfs(i, j + 1) + dfs(i, j - 1)
+
+        ans = 0
+        for i in range(m):
+            for j in range(n):
+                if grid[i][j] == 1:
+                    ans = max(ans, dfs(i, j))
+        return ans
+```
+
+记忆要点：进入一个格子后立即标记为 0，这样既能从相邻格子 DFS 进来时立刻退出（边界检查不通过），又能避免对同一格子重复计算。
+
+### 例题 2：单词搜索
+
+[LC 79. Word Search](https://leetcode.com/problems/word-search/)。网格 DFS + 回溯的经典题：判断 word 是否能从 board 某格出发，沿着上下左右连续匹配。
+
+```cpp
+class Solution {
+public:
+    bool exist(vector<vector<char>>& board, string word) {
+        int m = board.size(), n = board[0].size();
+        for (int i = 0; i < m; ++i) {
+            for (int j = 0; j < n; ++j) {
+                if (dfs(board, word, 0, i, j)) return true;
+            }
+        }
+        return false;
+    }
+
+    bool dfs(vector<vector<char>>& board, const string& word, int k, int i, int j) {
+        int m = board.size(), n = board[0].size();
+        if (i < 0 || i >= m || j < 0 || j >= n || board[i][j] != word[k]) return false;
+        if (k == (int)word.size() - 1) return true;  // 匹配到最后一个字符
+
+        char tmp = board[i][j];
+        board[i][j] = '#';  // 标记"访问中"
+        bool found = dfs(board, word, k + 1, i + 1, j)
+                  || dfs(board, word, k + 1, i - 1, j)
+                  || dfs(board, word, k + 1, i, j + 1)
+                  || dfs(board, word, k + 1, i, j - 1);
+        board[i][j] = tmp;  // 回溯：撤销标记
+        return found;
+    }
+};
+```
+
+```python
+from typing import List
+
+class Solution:
+    def exist(self, board: List[List[str]], word: str) -> bool:
+        m, n = len(board), len(board[0])
+
+        def dfs(k: int, i: int, j: int) -> bool:
+            if i < 0 or i >= m or j < 0 or j >= n or board[i][j] != word[k]:
+                return False
+            if k == len(word) - 1:
+                return True
+            tmp = board[i][j]
+            board[i][j] = '#'
+            found = (dfs(k + 1, i + 1, j) or dfs(k + 1, i - 1, j) or
+                     dfs(k + 1, i, j + 1) or dfs(k + 1, i, j - 1))
+            board[i][j] = tmp
+            return found
+
+        for i in range(m):
+            for j in range(n):
+                if dfs(0, i, j):
+                    return True
+        return False
+```
+
+记忆要点：
+- 在网格 DFS + 回溯问题中，用 `'#'` 或者其他特殊字符标记"访问中"，递归返回后**还原**原字符。
+- 比起维护一个 visited 数组，"标记 + 还原"节省了内存分配，而且能在同一格子上多起点搜索。
+- 终止条件的顺序：先判断"匹配失败"（边界/字符不匹配），再判断"匹配成功"（已匹配到 word 的最后一个字符），如果颠倒会因为字符已经被覆盖而出错。
+
+### 例题 3：路径总和
+
+[LC 112. Path Sum](https://leetcode.com/problems/path-sum/)。树 DFS 的基础题：判断是否存在从根到叶的路径使得节点值之和等于 targetSum。
+
+```cpp
+class Solution {
+public:
+    bool hasPathSum(TreeNode* root, int targetSum) {
+        if (!root) return false;
+        if (!root->left && !root->right) {
+            return root->val == targetSum;
+        }
+        int remain = targetSum - root->val;
+        return hasPathSum(root->left, remain)
+            || hasPathSum(root->right, remain);
+    }
+};
+```
+
+```python
+from typing import Optional
+
+class TreeNode:
+    def __init__(self, val=0, left=None, right=None):
+        self.val = val
+        self.left = left
+        self.right = right
+
+class Solution:
+    def hasPathSum(self, root: Optional[TreeNode], targetSum: int) -> bool:
+        if not root:
+            return False
+        if not root.left and not root.right:
+            return root.val == targetSum
+        remain = targetSum - root.val
+        return (self.hasPathSum(root.left, remain) or
+                self.hasPathSum(root.right, remain))
+```
+
+记忆要点：树 DFS 的关键是把"自顶向下"的累加转化为"自底向上"的递归——把当前节点的值减去后传给子节点，**叶子节点判断剩余是否为 0**。注意要先判断空节点（`!root`），再判断叶子节点，否则 `root->val` 会因为 root 为空而崩溃。
+
+## 单调栈 - Monotonic Stack
+
+单调栈用于解决"下一个更大/更小元素"类型的问题。它通过维护一个单调（递增或递减）的栈，在 O(n) 时间复杂度内完成所有元素的"下一个更大元素"查询。如果临场用暴力 O(n²) 求解，会卡数据范围比较大的题。
+
+典型应用场景：
+- 下一个更大元素 / 下一个更小元素
+- 柱状图最大矩形
+- 每日温度（下一个更暖的日子）
+- 循环数组的下一个更大元素
+
+### 核心模板（下一个更大元素）
+
+```cpp
+std::vector<int> nextGreater(const std::vector<int>& nums) {
+    int n = nums.size();
+    std::vector<int> ans(n, -1);
+    std::stack<int> stk;  // 存下标，栈中元素对应的 nums[stk] 单调递增
+
+    for (int i = 0; i < n; ++i) {
+        while (!stk.empty() && nums[i] > nums[stk.top()]) {
+            ans[stk.top()] = nums[i];
+            stk.pop();
+        }
+        stk.push(i);
+    }
+    return ans;
+}
+```
+
+记忆要点：
+1. **栈中存下标而不是元素本身**——这样既能比较值，又能得到位置关系。
+2. **单调性的判断是针对 `nums` 的，不是栈本身的"高度"**——栈只是辅助结构，nums[stk] 保持单调。
+3. 找"下一个更大元素"用**单调递增栈**（栈底到栈顶对应 nums[stk] 单调递增）；找"下一个更小元素"用单调递减栈。
+4. 处理**循环数组**的方法：把数组"复制一份"接在后面（`i % n` 取模），或者用取模 + 数组长度翻倍的循环。
+5. 处理"还没找到答案的元素"：循环结束后，栈中剩余的下标对应的答案就是 `-1`（如果题目默认填 -1）。
+
+### 例题 1：每日温度
+
+[LC 739. Daily Temperatures](https://leetcode.com/problems/daily-temperatures/)。单调栈入门题：求每天之后第一个更暖的日子距离几天。
+
+```cpp
+class Solution {
+public:
+    vector<int> dailyTemperatures(vector<int>& temperatures) {
+        int n = temperatures.size();
+        std::vector<int> ans(n, 0);
+        std::stack<int> stk;  // 单调递增栈，存下标
+
+        for (int i = 0; i < n; ++i) {
+            while (!stk.empty() && temperatures[i] > temperatures[stk.top()]) {
+                int prev = stk.top();
+                stk.pop();
+                ans[prev] = i - prev;
+            }
+            stk.push(i);
+        }
+        return ans;
+    }
+};
+```
+
+```python
+from typing import List
+
+class Solution:
+    def dailyTemperatures(self, temperatures: List[int]) -> List[int]:
+        n = len(temperatures)
+        ans = [0] * n
+        stk = []  # 单调递增栈，存下标
+
+        for i in range(n):
+            while stk and temperatures[i] > temperatures[stk[-1]]:
+                prev = stk.pop()
+                ans[prev] = i - prev
+            stk.append(i)
+        return ans
+```
+
+记忆要点：栈中存的是"还没找到下一个更大元素"的下标。每当遇到一个更暖的日子，就把栈中所有比它冷的下标都"解决"掉——栈顶对应的答案就是 `i - prev`（天数差）。
+
+### 例题 2：下一个更大元素 I
+
+[LC 496. Next Greater Element I](https://leetcode.com/problems/next-greater-element-i/)。这题的变形是 nums1 是 nums2 的子集，只需要返回 nums1 中每个元素在 nums2 中的"下一个更大元素"。
+
+```cpp
+class Solution {
+public:
+    vector<int> nextGreaterElement(vector<int>& nums1, vector<int>& nums2) {
+        std::unordered_map<int, int> next;
+        std::stack<int> stk;
+
+        for (int num : nums2) {
+            while (!stk.empty() && num > stk.top()) {
+                next[stk.top()] = num;
+                stk.pop();
+            }
+            stk.push(num);
+        }
+        while (!stk.empty()) {
+            next[stk.top()] = -1;
+            stk.pop();
+        }
+
+        std::vector<int> ans;
+        ans.reserve(nums1.size());
+        for (int num : nums1) {
+            ans.push_back(next[num]);
+        }
+        return ans;
+    }
+};
+```
+
+```python
+from typing import List
+
+class Solution:
+    def nextGreaterElement(self, nums1: List[int], nums2: List[int]) -> List[int]:
+        next_greater = {}
+        stk = []
+        for num in nums2:
+            while stk and num > stk[-1]:
+                smaller = stk.pop()
+                next_greater[smaller] = num
+            stk.append(num)
+        while stk:
+            next_greater[stk.pop()] = -1
+
+        return [next_greater[num] for num in nums1]
+```
+
+记忆要点：这题栈中存的是**元素本身**（不是下标），因为我们只需要输出"值"而不需要位置。处理完 nums2 后，栈中剩余元素的"下一个更大元素"就是 `-1`，要在循环结束后补齐。
+
+### 例题 3：柱状图中最大的矩形
+
+[LC 84. Largest Rectangle in Histogram](https://leetcode.com/problems/largest-rectangle-in-histogram/)。单调栈的进阶应用：给定柱状图高度，求最大矩形面积。
+
+```cpp
+class Solution {
+public:
+    int largestRectangleArea(vector<int>& heights) {
+        int n = heights.size();
+        std::stack<int> stk;  // 单调递增栈，存下标
+        int ans = 0;
+
+        // 多走一轮 i == n，用 cur_h = 0 把栈里所有柱子都弹出来
+        for (int i = 0; i <= n; ++i) {
+            int cur_h = (i == n) ? 0 : heights[i];
+            while (!stk.empty() && cur_h < heights[stk.top()]) {
+                int h = heights[stk.top()];
+                stk.pop();
+                int w = stk.empty() ? i : i - stk.top() - 1;
+                ans = std::max(ans, h * w);
+            }
+            stk.push(i);
+        }
+        return ans;
+    }
+};
+```
+
+```python
+from typing import List
+
+class Solution:
+    def largestRectangleArea(self, heights: List[int]) -> int:
+        n = len(heights)
+        stk = []  # 单调递增栈，存下标
+        ans = 0
+
+        for i in range(n + 1):
+            cur_h = 0 if i == n else heights[i]
+            while stk and cur_h < heights[stk[-1]]:
+                h = heights[stk.pop()]
+                w = i if not stk else i - stk[-1] - 1
+                ans = max(ans, h * w)
+            stk.append(i)
+        return ans
+```
+
+记忆要点：
+- **哨兵技巧**：循环 `n + 1` 次，最后一次用 `cur_h = 0` 把栈里所有柱子都弹出来，避免在结尾额外处理栈。
+- 弹出柱子 `h = heights[top]` 时，宽度是 `i - stk.top() - 1`（栈顶的新栈顶是左边界）。如果栈已经空了，宽度就是 `i`。
+- 这种"用 0 高度清空栈"的技巧可以写出非常简洁的代码，是这题的标志性写法。
+
+## 前缀和 / 差分数组
+
+前缀和是一种"预处理换查询"的技巧：把"区间和"的多次查询从 O(n) 优化到 O(1)，代价是预处理 O(n)。差分数组是前缀和的逆运算，用来高效处理"区间加"操作。
+
+这两个技巧的模板都很短，但临场如果一时想不起来，多次 O(n) 区间求和照样会导致 TLE。
+
+### 一维前缀和
+
+```cpp
+// 构造：pre[i] = nums[0] + nums[1] + ... + nums[i - 1]
+std::vector<int> pre(n + 1, 0);
+for (int i = 0; i < n; ++i) {
+    pre[i + 1] = pre[i] + nums[i];
+}
+// 查询区间 [l, r] 的元素和（包含 l 和 r）
+int sum = pre[r + 1] - pre[l];
+```
+
+### 一维差分数组
+
+```cpp
+// 给区间 [l, r]（包含 l 和 r）每个元素加上 val
+diff[l] += val;
+diff[r + 1] -= val;
+
+// 最后对 diff 求前缀和就能还原数组
+for (int i = 1; i < n; ++i) {
+    diff[i] += diff[i - 1];
+}
+```
+
+### 二维前缀和（了解即可）
+
+```cpp
+// 构造
+for (int i = 0; i < m; ++i)
+    for (int j = 0; j < n; ++j)
+        pre[i + 1][j + 1] = nums[i][j] + pre[i][j + 1]
+                           + pre[i + 1][j] - pre[i][j];
+
+// 查询矩形 (x1, y1) 到 (x2, y2) 的元素和（包含边界）
+int sum = pre[x2 + 1][y2 + 1] - pre[x1][y2 + 1]
+        - pre[x2 + 1][y1] + pre[x1][y1];
+```
+
+记忆要点：
+1. 前缀和数组长度是 `n + 1`，这样 `pre[0] = 0` 可以优雅地处理 `l = 0` 的情况，**避免特判**。
+2. 区间 `[l, r]`（包含两端）的和是 `pre[r + 1] - pre[l]`，因为 `pre[r + 1]` 包含了 nums[0..r]，减去 `pre[l]`（包含 nums[0..l-1]）得到 nums[l..r]。
+3. 差分数组的核心：`diff[i] = nums[i] - nums[i - 1]`。对区间 `[l, r]` 加 `val`，等价于 `diff[l] += val` 和 `diff[r + 1] -= val`。
+4. 差分数组处理"多个区间加，最后求每个点的最终值"的问题特别合适，时间复杂度 O(n + k)，其中 k 是操作数。
+
+### 例题 1：区域和检索 - 不可变
+
+[LC 303. Range Sum Query - Immutable](https://leetcode.com/problems/range-sum-query-immutable/)。前缀和的入门题：构造时算前缀和，查询时 `O(1)` 返回区间和。
+
+```cpp
+class NumArray {
+public:
+    std::vector<int> pre;
+
+    NumArray(vector<int>& nums) {
+        int n = nums.size();
+        pre.resize(n + 1, 0);
+        for (int i = 0; i < n; ++i) {
+            pre[i + 1] = pre[i] + nums[i];
+        }
+    }
+
+    int sumRange(int left, int right) {
+        return pre[right + 1] - pre[left];
+    }
+};
+```
+
+```python
+from typing import List
+
+class NumArray:
+    def __init__(self, nums: List[int]):
+        self.pre = [0]
+        for num in nums:
+            self.pre.append(self.pre[-1] + num)
+
+    def sumRange(self, left: int, right: int) -> int:
+        return self.pre[right + 1] - self.pre[left]
+```
+
+记忆要点：构造函数里算 `pre[i + 1] = pre[i] + nums[i]`，查询时直接 `pre[right + 1] - pre[left]`。如果忘了把 `pre` 数组长度设为 `n + 1`，`left = 0` 的查询就需要特判。
+
+### 例题 2：航班预订统计
+
+[LC 1109. Corporate Flight Bookings](https://leetcode.com/problems/corporate-flight-bookings/)。差分数组的入门题：每个 `bookings[i] = [l, r, v]` 表示航班 l 到 r 预订了 v 个座位，返回每个航班的总预订数。
+
+```cpp
+class Solution {
+public:
+    vector<int> corpFlightBookings(vector<vector<int>>& bookings, int n) {
+        std::vector<int> diff(n + 1, 0);
+        for (const auto& booking : bookings) {
+            int l = booking[0] - 1;  // 转成 0-indexed
+            int r = booking[1] - 1;
+            int v = booking[2];
+            diff[l] += v;
+            diff[r + 1] -= v;
+        }
+        std::vector<int> ans(n);
+        ans[0] = diff[0];
+        for (int i = 1; i < n; ++i) {
+            ans[i] = ans[i - 1] + diff[i];
+        }
+        return ans;
+    }
+};
+```
+
+```python
+from typing import List
+
+class Solution:
+    def corpFlightBookings(self, bookings: List[List[int]], n: int) -> List[int]:
+        diff = [0] * (n + 1)
+        for l, r, v in bookings:
+            diff[l - 1] += v
+            diff[r] -= v
+        ans = []
+        cur = 0
+        for i in range(n):
+            cur += diff[i]
+            ans.append(cur)
+        return ans
+```
+
+记忆要点：差分数组长度是 `n + 1`，最后一个位置用作 `r + 1` 的"越界保护"，最后不必取出来。最后扫一遍 `diff` 累加得到的就是每个航班的总预订数。
+
+### 例题 3：拼车
+
+[LC 1094. Car Pooling](https://leetcode.com/problems/car-pooling/)。差分数组 + 容量判断：判断从起点到终点接送所有乘客时车上是否超过 capacity（乘客在同一站下就马上能上）。
+
+```cpp
+class Solution {
+public:
+    bool carPooling(vector<vector<int>>& trips, int capacity) {
+        std::vector<int> diff(1001, 0);  // 题目限制 0 <= from < to <= 1000
+        for (const auto& trip : trips) {
+            int passengers = trip[0];
+            int from = trip[1];
+            int to = trip[2];
+            diff[from] += passengers;
+            diff[to] -= passengers;
+        }
+        int cur = 0;
+        for (int i = 0; i <= 1000; ++i) {
+            cur += diff[i];
+            if (cur > capacity) return false;
+        }
+        return true;
+    }
+};
+```
+
+```python
+from typing import List
+
+class Solution:
+    def carPooling(self, trips: List[List[int]], capacity: int) -> bool:
+        diff = [0] * 1001
+        for passengers, from_, to in trips:
+            diff[from_] += passengers
+            diff[to] -= passengers
+
+        cur = 0
+        for i in range(1001):
+            cur += diff[i]
+            if cur > capacity:
+                return False
+        return True
+```
+
+记忆要点：差分数组配合"扫描求前缀和"可以高效判断某个时刻是否超限。这题和上一题的模式完全一样——多个区间"加上乘客"（差分），最后扫一遍看每个位置的累积值（求前缀和），累加过程中一旦超过 capacity 就返回 false。
 
 ## 经典算法和数据结构
 
