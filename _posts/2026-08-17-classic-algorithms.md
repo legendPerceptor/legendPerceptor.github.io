@@ -932,43 +932,129 @@ public:
 
 ### 变长窗口的两套模板
 
-**找最长**（窗口内不满足约束时一直收缩）：
+把滑动窗口想象成两只手在数组上滑动，每一步都在做三件事：
+
+1. **右手扩张**：把 `s[r]` 加入窗口（窗口变成 `[l, r]`）。
+2. **左手收缩**：在需要的时候，把 `s[l]` 从窗口移除，`l` 右移（窗口收缩）。
+3. **更新答案**：当窗口恰好满足约束时，记下当前的长度。
+
+窗口里还需要维护一个计数表 `window[c]`：进入窗口时 +1，离开窗口时 -1，**这两个动作必须严格对称，缺一就会出错**。
+
+因为 `l` 和 `r` 都只往右走，最坏各走 `n` 步，所以总复杂度一定是 `O(n)`——这就是滑动窗口不会超时的根本原因。
+
+#### 找最长：窗口不满足约束就一直收缩
+
+约束示例："窗口内字符不能重复"。只要 `window[c] > 1` 就说明重复了，需要收缩。
 
 ```cpp
-int l = 0, ans = 0;
-std::unordered_map<char, int> cnt;
+int l = 0;            // 窗口左端点（闭区间，包含 s[l]）
+int ans = 0;          // 记录目前为止的最长长度
+std::unordered_map<char, int> window;  // window[c] = 字符 c 当前在窗口内出现的次数
+
 for (int r = 0; r < n; ++r) {
-    cnt[s[r]]++;
-    while (窗口不满足约束) {
-        if (--cnt[s[l]] == 0) cnt.erase(s[l]);
-        ++l;
+    // ① 右手扩张：把 s[r] 加入窗口
+    char c = s[r];
+    window[c]++;
+
+    // ② 左手收缩：只要窗口"不满足约束"，就一直把 s[l] 移出窗口
+    while (window[c] > 1) {  // 以"窗口内不能有重复字符"为例
+        char out = s[l];
+        window[out]--;       // s[l] 离开窗口，计数 -1
+        l++;                 // 窗口左端点右移
     }
+
+    // ③ 此时窗口一定满足约束，记下当前窗口长度
     ans = std::max(ans, r - l + 1);
 }
 ```
 
-**找最短**（窗口内满足约束时一直收缩）：
+```python
+# TODO: 自己用 Python 实现"找最长"模板
+# 提示：
+#   l = 0, ans = 0, window = {}
+#   for r, c in enumerate(s):
+#       window[c] = window.get(c, 0) + 1
+#       while window[c] > 1:        # 以"不能有重复字符"为例
+#           window[s[l]] -= 1
+#           l += 1
+#       ans = max(ans, r - l + 1)
+```
+
+#### 找最短：窗口满足约束就一直收缩
+
+约束示例："窗口内必须包含 t 的所有字符"。这种约束没法用一个计数搞定，需要一个 `need` 表，再用一个 `formed` 记录"已经凑齐数量的字符种类数"。
 
 ```cpp
-int l = 0, ans = INT_MAX;
-std::unordered_map<char, int> cnt;
-int formed = 0;  // 已满足 need 数量要求的字符种类数
+std::unordered_map<char, int> need, window;
+int required = (int)need.size();  // t 中一共有多少种字符需要凑齐
+int formed = 0;                   // 当前窗口里，已经"恰好凑够 need 数量"的字符种类数
+
+int l = 0;
+int ans = INT_MAX;
+
 for (int r = 0; r < n; ++r) {
-    cnt[s[r]]++;
-    if (cnt[s[r]] == need[s[r]]) ++formed;
-    while (formed == required) {
+    // ① 右手扩张：把 s[r] 加入窗口
+    char c = s[r];
+    window[c]++;
+
+    // 如果这个字符是 need 里的，并且加入后"刚好达到" need 的要求，
+    // 就把它计入"已满足"
+    if (window[c] == need[c]) ++formed;
+
+    // ② 左手收缩：只要窗口"已经满足约束"，就一直往左压，尝试找更短的
+    while (formed == required && l <= r) {
         ans = std::min(ans, r - l + 1);
-        if (--cnt[s[l]] < need[s[l]]) --formed;
-        ++l;
+
+        char out = s[l];
+        window[out]--;
+        // 移走 out 之后，如果它的数量变得不够了，就把 formed 减 1
+        if (window[out] < need[out]) --formed;
+        l++;
     }
 }
 ```
 
+```python
+# TODO: 自己用 Python 实现"找最短"模板
+# 提示：
+#   need = Counter(t); required = len(need); formed = 0
+#   window = {}; l = 0; ans = float('inf')
+#   for r, c in enumerate(s):
+#       window[c] = window.get(c, 0) + 1
+#       if window[c] == need[c]: formed += 1
+#       while formed == required:
+#           ans = min(ans, r - l + 1)
+#           out = s[l]
+#           window[out] -= 1
+#           if window[out] < need[out]: formed -= 1
+#           l += 1
+```
+
+注意 `formed == required` 才表示窗口里所有需要的字符种类都凑齐了（数量也刚好够）。一旦凑齐，就不断尝试从左边压，看最短能压到多长。
+
+#### 用 `s = "abcabcbb"` 走一遍"找最长"
+
+约束：窗口内字符不能重复。
+
+| r | s[r] | 操作 | window | l | 窗口 | ans |
+|---|------|------|--------|---|------|-----|
+| 0 | a | 加入 | {a:1} | 0 | "a" | 1 |
+| 1 | b | 加入 | {a:1, b:1} | 0 | "ab" | 2 |
+| 2 | c | 加入 | {a:1, b:1, c:1} | 0 | "abc" | 3 |
+| 3 | a | 加入 → 窗口内 a 重复，收缩 1 次 | {a:1, b:1, c:1} | 1 | "bca" | 3 |
+| 4 | b | 加入 → 窗口内 b 重复，收缩 1 次 | {a:1, b:1, c:1} | 2 | "cab" | 3 |
+| 5 | c | 加入 → 窗口内 c 重复，收缩 1 次 | {a:1, b:1, c:1} | 3 | "abc" | 3 |
+| 6 | b | 加入 → 窗口内 b 重复，连续收缩到 l=5 | {a:0, b:1, c:1} | 5 | "cb" | 3 |
+| 7 | b | 加入 → 窗口内 b 重复，连续收缩到 l=7 | {b:1} | 7 | "b" | 3 |
+
+最终 `ans = 3`，对应的最长无重复子串是 `abc` / `bca` / `cab`。
+
 记忆要点：
 1. **定长窗口**先初始化前 K 个元素，再循环 `n - K` 次，每次"出左入右"。
-2. 变长窗口的 while 条件是核心——"找最长"用"不满足就收缩"，"找最短"用"满足就收缩"。
+2. 变长窗口的 `while` 条件是核心——"找最长"用"不满足就收缩"，"找最短"用"满足就收缩"。
 3. 窗口状态的加入和移除要严格对称，缺一就会出错。
-4. 字符类问题优先用 `int cnt[128]` 数组，比 unordered_map 快得多。
+4. 字符类问题优先用 `int cnt[128]` 数组，比 `unordered_map` 快得多。
+5. `l` 和 `r` 都只往右走，总复杂度一定是 `O(n)`——这是滑动窗口不会超时的根本原因。
 
 ### 例题 1：最长无重复子串
 
