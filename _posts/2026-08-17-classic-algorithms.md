@@ -1173,7 +1173,7 @@ class Solution:
 
 ### 例题 3：字符串的排列
 
-[LC 567. Permutation in String](https://leetcode.com/problems/permutation-in-string/)。定长窗口：判断 s2 是否包含 s1 的某个排列（即 s2 中是否存在长度为 |s1| 的窗口，字符计数和 s1 完全一致）。
+[LC 567. Permutation in String](https://leetcode.com/problems/permutation-in-string/)。定长窗口：判断 s2 是否包含 s1 的某个排列（即 s2 中是否存在长度为 `|s1|` 的窗口，字符计数和 s1 完全一致）。
 
 ```cpp
 class Solution {
