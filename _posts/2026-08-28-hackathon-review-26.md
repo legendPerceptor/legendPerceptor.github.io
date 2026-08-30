@@ -7,7 +7,7 @@ pin: false
 math: true
 ---
 
-> 复盘凭借印象构造题目大意后重新编写代码解题，使用的函数名和类名与比赛不同，主要提供算法和解题思路。
+> 复盘凭借印象构造题目大意后重新编写代码解题，使用的函数名和类名与比赛不同，主要提供算法和解题思路。我vibe code了一套评测机制，下面提到的解法也都放在了同一个repo里，想要练习的朋友可以从[Hackathon 26 Review Github Repo](https://github.com/legendPerceptor/hackathon-26-review)获取完整工程。
 {: .prompt-tip }
 
 ## 第一题
@@ -53,13 +53,14 @@ long long maxTargetResult(const vector<vector<int>> &matrix) {
     vector<vector<long long>> prefix(m + 1, vector<long long>(n + 1, 0));
     for (int i = 0; i < m; ++i) {
         for (int j = 0; j < n; ++j) {
-            prefix[i + 1][j + 1] =
-                matrix[i][j] + prefix[i][j + 1] + prefix[i + 1][j] - prefix[i][j];
+            prefix[i + 1][j + 1] = matrix[i][j] + prefix[i][j + 1] +
+                                   prefix[i + 1][j] - prefix[i][j];
         }
     }
-    auto rectangleSum = [&](int top, int left, int bottom, int right) -> long long {
-        return prefix[bottom + 1][right + 1] - prefix[top][right + 1] - prefix[bottom + 1][left] +
-               prefix[top][left];
+    auto rectangleSum = [&](int top, int left, int bottom,
+                            int right) -> long long {
+        return prefix[bottom + 1][right + 1] - prefix[top][right + 1] -
+               prefix[bottom + 1][left] + prefix[top][left];
     };
     long long answer = 0;
     // 枚举最大乘积靶的左上角
@@ -72,8 +73,8 @@ long long maxTargetResult(const vector<vector<int>> &matrix) {
             int centerCol = left + k - 1;
             long long result = 0;
             for (int radius = 0; radius < k; ++radius) {
-                result += rectangleSum(centerRow - radius, centerCol - radius, centerRow + radius,
-                                       centerCol + radius);
+                result += rectangleSum(centerRow - radius, centerCol - radius,
+                                       centerRow + radius, centerCol + radius);
             }
             answer = max(answer, result);
         }
@@ -137,32 +138,29 @@ long long maxScore(const vector<int>& array) {
 #include <bits/stdc++.h>
 using namespace std;
 
-int maxCoveredHabitats(
-    const vector<pair<int, int>>& pos,
-    int scope
-) {
+int maxCoveredHabitats(const vector<pair<int, int>>& pos, int scope) {
     int k = static_cast<int>(pos.size());
     int answer = 0;
 
-    for(int j=0;j<k;j++) {
-        int yStart = pos[j].second
+    for (int j = 0; j < k; j++) {
+        int yStart = pos[j].second;
         int covered = 0;
 
-        for(const auto& [x, y]: pos) {
-            if(yStart <= y && y <= yStart + scope) {
+        for (const auto& [x, y] : pos) {
+            if (yStart <= y && y <= yStart + scope) {
                 ++covered;
             }
         }
         answer = max(answer, covered);
     }
 
-    for(int i=0;i<k;++i) {
+    for (int i = 0; i < k; ++i) {
         int xStart = pos[i].first;
         int verticalCovered = 0;
 
         vector<int> remainingY;
 
-        for(const auto&[x, y]: pos) {
+        for (const auto& [x, y] : pos) {
             if (xStart <= x && x <= xStart + scope) {
                 ++verticalCovered;
             } else {
@@ -172,9 +170,10 @@ int maxCoveredHabitats(
 
         sort(remainingY.begin(), remainingY.end());
 
-        int left=0;
-        for(int right=0; right < static_cast<int>(remainingY.size()); ++right) {
-            while(remainingY[right] - remainingY[left] > scope) {
+        int left = 0;
+        for (int right = 0; right < static_cast<int>(remainingY.size());
+             ++right) {
+            while (remainingY[right] - remainingY[left] > scope) {
                 ++left;
             }
             int horizontalCovered = right - left + 1;
@@ -183,7 +182,6 @@ int maxCoveredHabitats(
         answer = max(answer, verticalCovered);
     }
     return answer;
-    
 }
 ```
 
@@ -212,17 +210,18 @@ private:
     }
 
     void pushDown(int node) {
-        if(lazy[node] == 0) {
+        if (lazy[node] == 0) {
             return;
         }
 
-        apply(node*2, lazy[node]);
-        apply(node*2 + 1, lazy[node]);
+        apply(node * 2, lazy[node]);
+        apply(node * 2 + 1, lazy[node]);
         lazy[node] = 0;
     }
 
-    void rangeAdd(int node, int left, int right, int queryLeft, int queryRight, int value) {
-        if(queryLeft <= left && right <= queryRight) {
+    void rangeAdd(int node, int left, int right, int queryLeft, int queryRight,
+                  int value) {
+        if (queryLeft <= left && right <= queryRight) {
             apply(node, value);
             return;
         }
@@ -232,62 +231,56 @@ private:
             rangeAdd(node * 2, left, middle, queryLeft, queryRight, value);
         }
         if (queryRight > middle) {
-            rangeAdd(node * 2 + 1, middle + 1, right, queryLeft, queryRight, value);
+            rangeAdd(node * 2 + 1, middle + 1, right, queryLeft, queryRight,
+                     value);
         }
-        maximum[node] = max(maximum[node*2], maximum[node*2 + 1]);
+        maximum[node] = max(maximum[node * 2], maximum[node * 2 + 1]);
     }
+
 public:
-    explicit SegmentTree(int size): n(size), maximum(size*4, 0), lazy(size*4, 0) {}
+    explicit SegmentTree(int size)
+        : n(size), maximum(size * 4, 0), lazy(size * 4, 0) {}
     void rangeAdd(int left, int right, int value) {
         if (left > right || n == 0) {
             return;
         }
-        rangeAdd(1, 0, n-1, left, right, value);
+        rangeAdd(1, 0, n - 1, left, right, value);
     }
-    int getMaximum() const {
-        return n==0 ? 0 : maximum[1];
-    }
+    int getMaximum() const { return n == 0 ? 0 : maximum[1]; }
 };
 
-int maxCoveredHabitats(
-    const vector<pair<int, int>>& points,
-    int scope
-) {
+int maxCoveredHabitats(const vector<pair<int, int>>& inputPoints, int scope) {
+    vector<pair<int, int>> points = inputPoints;
     int k = static_cast<int>(points.size());
-    if(k==0) {
+    if (k == 0) {
         return 0;
     }
     sort(points.begin(), points.end());
     // candidates维护第二台水平监视器所有值得考虑的起始纵坐标
     vector<long long> candidates;
-    for(const auto&[x, y]: points) {
+    for (const auto& [x, y] : points) {
         candidates.push_back(y);
     }
     sort(candidates.begin(), candidates.end());
-    candidates.erase(unique(candidates.begin(), candidates.end()), candidates.end());
-    // 线段树维护对于每一个候选水平区间起点 y_2，第二台监视器当前能够覆盖多少个“没有被第一台监视器覆盖”的栖息地。
+    candidates.erase(unique(candidates.begin(), candidates.end()),
+                     candidates.end());
+    // 线段树维护对于每一个候选水平区间起点
+    // y_2，第二台监视器当前能够覆盖多少个“没有被第一台监视器覆盖”的栖息地。
     SegmentTree tree(static_cast<int>(candidates.size()));
 
-    auto updatePoint = [&] (long long y, int delta) {
+    auto updatePoint = [&](long long y, int delta) {
         int left = static_cast<int>(
-            lower_bound(
-                candidates.begin(),
-                candidates.end(),
-                y - scope
-            ) - candidates.begin()
-        );
+            lower_bound(candidates.begin(), candidates.end(), y - scope) -
+            candidates.begin());
         int right = static_cast<int>(
-            upper_bound(
-                candidates.begin(),
-                candidates.end(),
-                y
-            ) - candidates.begin()
-        ) - 1;
+                        upper_bound(candidates.begin(), candidates.end(), y) -
+                        candidates.begin()) -
+                    1;
         tree.rangeAdd(left, right, delta);
-    }
+    };
 
     // 初始状态：所有点都不在监视器1中，都放在第二台监视器里统计
-    for(const auto&[x, y]: points) {
+    for (const auto& [x, y] : points) {
         updatePoint(y, 1);
     }
 
@@ -297,21 +290,21 @@ int maxCoveredHabitats(
 
     // 按照相同 x 分组枚举第一台监视器的左端点。
     int left = 0;
-    while(left < k) {
+    while (left < k) {
         long long xStart = points[left].first;
-        // 每一轮循环是把监视器1放在xStart，用线段树把监视器2能覆盖的不包含监视器1覆盖的点的数量求出来
+
         // 被第一台监视器维护了的点，要从第二台里减掉
         while (right < k && points[right].first <= xStart + scope) {
             updatePoint(points[right].second, -1);
             ++verticalCovered;
             ++right;
         }
-        // 此时已经有了监视器1放在xStart的时候的答案
+
         answer = max(answer, verticalCovered + tree.getMaximum());
 
         int nextLeft = left;
-        //第一台监视器往前走，要在第二台里把nextLeft之前的加回来
-        while(nextLeft < k && points[nextLeft].first == xStart) {
+        // 第一台监视器往前走，要在第二台里把nextLeft之前的加回来
+        while (nextLeft < k && points[nextLeft].first == xStart) {
             updatePoint(points[nextLeft].second, 1);
             --verticalCovered;
             ++nextLeft;
@@ -338,6 +331,7 @@ int maxCoveredHabitats(
 ```cpp
 #include <bits/stdc++.h>
 using namespace std;
+
 class DSU {
 private:
     vector<int> parent;
@@ -345,70 +339,56 @@ private:
     int componentCount;
 
 public:
-    explicit DSU(int n)
-        : parent(n), size(n, 1), componentCount(n) {
-        iota(parent.begin(), parent.end(), 0);
+    explicit DSU(int n) : parent(n), size(n, 1), componentCount(n) {
+        std::iota(parent.begin(), parent.end(), 0);
     }
-
     int find(int x) {
         if (parent[x] != x) {
             parent[x] = find(parent[x]);
         }
         return parent[x];
     }
-
     bool unite(int x, int y) {
         int rootX = find(x);
         int rootY = find(y);
-
         if (rootX == rootY) {
             return false;
         }
-
-        // 小树合并到大树
         if (size[rootX] < size[rootY]) {
             swap(rootX, rootY);
         }
-
         parent[rootY] = rootX;
         size[rootX] += size[rootY];
         --componentCount;
-
         return true;
     }
-
-    int count() const {
-        return componentCount;
-    }
+    int count() const { return componentCount; }
 };
 
-vector<int> countComponents(
-    int n,
-    const vector<pair<int, int>>& s,
-    const vector<int>& p,
-    const vector<pair<int, int>>& queries
-) {
+vector<int> countComponents(int n, const vector<pair<int, int>>& s,
+                            const vector<int>& p,
+                            const vector<pair<int, int>>& queries) {
     unordered_map<int, vector<pair<int, int>>> groupEdges;
-    
-    for(size_t i=0;i<s.size();++i) {
+
+    for (size_t i = 0; i < s.size(); ++i) {
         groupEdges[p[i]].push_back(s[i]);
     }
     vector<int> answer;
     answer.reserve(queries.size());
 
-    for(const auto&[g1, g2]: queries) {
+    for (const auto& [g1, g2] : queries) {
         DSU dsu(n);
         auto it1 = groupEdges.find(g1);
-        if(it1 != groupEdges.end()) {
-            for(const auto&[u, v]: it1->second) {
+        if (it1 != groupEdges.end()) {
+            for (const auto& [u, v] : it1->second) {
                 dsu.unite(u, v);
             }
         }
 
-        if(g2 != g1) {
+        if (g2 != g1) {
             auto it2 = groupEdges.find(g2);
-            if(it2 != groupEdges.end()) {
-                for(const auto&[u, v]: it2->second) {
+            if (it2 != groupEdges.end()) {
+                for (const auto& [u, v] : it2->second) {
                     dsu.unite(u, v);
                 }
             }
@@ -513,7 +493,8 @@ static void addEdges(RollbackDSU& dsu, const vector<Edge>& edges) {
     }
 }
 
-vector<int> countComponents(int n, const vector<pair<int, int>>& s, const vector<int>& p,
+vector<int> countComponents(int n, const vector<pair<int, int>>& s,
+                            const vector<int>& p,
                             const vector<pair<int, int>>& queries) {
     int m = static_cast<int>(s.size());
     int threshold = max(1, static_cast<int>(sqrt(max(1, m))) + 1);
@@ -563,7 +544,7 @@ vector<int> countComponents(int n, const vector<pair<int, int>>& s, const vector
         if (!heavy1 && !heavy2) {
             lightQueries.push_back(key);
         } else if (heavy1) {
-            heavyQueries[g1].push_back(key)
+            heavyQueries[g1].push_back(key);
         } else {
             heavyQueries[g2].push_back(key);
         }
