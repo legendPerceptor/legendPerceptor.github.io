@@ -606,3 +606,184 @@ vector<int> countComponents(int n, const vector<pair<int, int>>& s,
     return result;
 }
 ```
+### 解法三：不使用回滚并查集：基础重组 + 稀疏临时并查集
+
+上面的可回滚并查集方案能够通过最大数据，但回滚并查集不能使用路径压缩，单次
+`find` 的复杂度是 $O(\log n)$。还可以利用一个更直接的观察避免回滚：对于包含重组
+$H$ 的查询，先只使用 $H$ 的边构建一个不会再修改的普通并查集；另一组 $G$ 的边
+$(u,v)$ 实际连接的是两个基础连通块
+
+$$ root_H(u),\ root_H(v) $$
+
+因此，每个查询只需用一个临时并查集合并这些基础连通块。基础并查集不会被修改，
+自然不需要快照和回滚，而且两个并查集都可以正常使用路径压缩。
+
+仍令分组阈值 $B=\sqrt m$：
+
+1. **轻组 + 轻组**：两组一共不超过 $2B$ 条边，直接放入临时并查集；
+2. **重组 + 任意组**：相同重组的查询放在一起，建立一次基础并查集。针对每个查询，
+   将另一组边的两个端点映射到基础并查集的根，再放进临时并查集；
+3. 使用时间戳实现稀疏并查集。每次清空只需增加时间戳，只有本轮访问的节点才会被
+   初始化，避免每个查询花费 $O(n)$ 重建数组；
+4. 查询组对先标准化并去重，$(g_1,g_2)$ 与 $(g_2,g_1)$ 只计算一次。
+
+设查询数为 $q$。轻查询最多扫描 $O(B)$ 条边；重查询的基础组只建立一次，另一组的
+边仍按根号分治的方式扫描。总复杂度约为
+
+$$
+O\left(qB\alpha(n)+\frac{m^2}{B}\alpha(n)\right)
+$$
+
+取 $B=\sqrt m$，当 $q$ 与 $m$ 同阶时为
+
+$$ O(m\sqrt m\alpha(n)) $$
+
+这里的 $\alpha(n)$ 是普通路径压缩并查集的均摊复杂度。相比回滚版本的
+$O(m\sqrt m\log n)$，它去掉了 `find` 的 $\log n$ 因子。实际运行时间的主要部分仍然
+是扫描各组的边，所以常数级提升通常没有公式看起来那么大，但代码不再需要维护修改
+历史，思路也更加直观。
+
+BFS 或 DFS 并不能带来同样的优化。若针对每个查询重新遍历所选两组构成的图，最坏
+仍需 $O(q(n+m))$；即使忽略孤立点，也会为大量查询反复扫描热门组的边。
+
+下面是完整实现：
+
+```cpp
+namespace q4_v3 {
+
+using Edge = pair<int, int>;
+
+struct PairHash {
+    size_t operator()(const pair<int, int>& value) const {
+        uint64_t first = static_cast<uint32_t>(value.first);
+        uint64_t second = static_cast<uint32_t>(value.second);
+        return static_cast<size_t>((first << 32) ^ second);
+    }
+};
+
+static pair<int, int> normalizePair(int first, int second) {
+    if (first > second) swap(first, second);
+    return {first, second};
+}
+
+class SparseDSU {
+    vector<int> parent, treeSize, version;
+    int currentVersion = 1;
+
+    void activate(int node) {
+        if (version[node] != currentVersion) {
+            version[node] = currentVersion;
+            parent[node] = node;
+            treeSize[node] = 1;
+        }
+    }
+
+public:
+    explicit SparseDSU(int n) : parent(n), treeSize(n), version(n, 0) {}
+
+    void reset() { ++currentVersion; }
+
+    int find(int node) {
+        activate(node);
+        if (parent[node] != node) parent[node] = find(parent[node]);
+        return parent[node];
+    }
+
+    bool unite(int first, int second) {
+        int rootFirst = find(first), rootSecond = find(second);
+        if (rootFirst == rootSecond) return false;
+        if (treeSize[rootFirst] < treeSize[rootSecond]) swap(rootFirst, rootSecond);
+        parent[rootSecond] = rootFirst;
+        treeSize[rootFirst] += treeSize[rootSecond];
+        return true;
+    }
+};
+
+vector<int> countComponents(int n, const vector<Edge>& edges, const vector<int>& groups,
+                            const vector<pair<int, int>>& queries) {
+    int m = static_cast<int>(edges.size());
+    int threshold = max(1, static_cast<int>(sqrt(max(1, m))) + 1);
+
+    unordered_map<int, vector<Edge>> groupEdges;
+    for (int i = 0; i < m; ++i) groupEdges[groups[i]].push_back(edges[i]);
+
+    auto isHeavy = [&](int group) {
+        auto it = groupEdges.find(group);
+        return it != groupEdges.end() &&
+               static_cast<int>(it->second.size()) >= threshold;
+    };
+
+    vector<pair<int, int>> normalizedQueries;
+    unordered_map<pair<int, int>, int, PairHash> answers;
+    for (auto [first, second] : queries) {
+        auto key = normalizePair(first, second);
+        normalizedQueries.push_back(key);
+        answers.emplace(key, -1);
+    }
+
+    vector<pair<int, int>> lightQueries;
+    unordered_map<int, vector<pair<int, int>>> heavyQueries;
+    for (const auto& [key, unused] : answers) {
+        bool firstHeavy = isHeavy(key.first);
+        bool secondHeavy = isHeavy(key.second);
+        if (!firstHeavy && !secondHeavy) {
+            lightQueries.push_back(key);
+        } else {
+            heavyQueries[firstHeavy ? key.first : key.second].push_back(key);
+        }
+    }
+
+    SparseDSU temporary(n);
+
+    for (auto [first, second] : lightQueries) {
+        temporary.reset();
+        int components = n;
+        auto addGroup = [&](int group) {
+            auto it = groupEdges.find(group);
+            if (it == groupEdges.end()) return;
+            for (auto [u, v] : it->second) {
+                if (temporary.unite(u, v)) --components;
+            }
+        };
+        addGroup(first);
+        if (second != first) addGroup(second);
+        answers[{first, second}] = components;
+    }
+
+    SparseDSU base(n);
+
+    for (const auto& [baseGroup, queryList] : heavyQueries) {
+        base.reset();
+        int baseComponents = n;
+        for (auto [u, v] : groupEdges[baseGroup]) {
+            if (base.unite(u, v)) --baseComponents;
+        }
+
+        for (const auto& key : queryList) {
+            int otherGroup = key.first == baseGroup ? key.second : key.first;
+            if (otherGroup == baseGroup) {
+                answers[key] = baseComponents;
+                continue;
+            }
+
+            temporary.reset();
+            int components = baseComponents;
+            auto it = groupEdges.find(otherGroup);
+            if (it != groupEdges.end()) {
+                for (auto [u, v] : it->second) {
+                    int rootU = base.find(u), rootV = base.find(v);
+                    if (temporary.unite(rootU, rootV)) --components;
+                }
+            }
+            answers[key] = components;
+        }
+    }
+
+    vector<int> result;
+    result.reserve(queries.size());
+    for (const auto& key : normalizedQueries) result.push_back(answers[key]);
+    return result;
+}
+
+}  // namespace q4_v3
+```
