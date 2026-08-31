@@ -2553,6 +2553,437 @@ class Solution:
         pass
 ```
 
+## 字符串处理 - String Algorithms
+
+这一章梳理四个最容易临场写不出来的字符串算法：**字符串哈希**、**KMP**、**Z 函数**、**Manacher**。它们都有非常固定的"模板代码"——背下来就能解决一大类问题，但每次都自己推一遍，几乎一定会写错或写超时。
+
+### 字符串哈希 - Rolling Hash
+
+字符串哈希（也叫滚动哈希 / Rabin-Karp）的核心思想是：把字符串看作一个 $B$ 进制的"大整数"，让两个字符串的比较从 O(L) 退化到 O(1)。具体地：
+
+$$H(s) = s_0 \cdot B^{L-1} + s_1 \cdot B^{L-2} + \dots + s_{L-1} \cdot B^{0}$$
+
+预处理出前缀哈希和 $B$ 的幂次后，任意子串 $s[l..r]$ 的哈希值都可以 O(1) 求出。配合 `uint64_t` 自然溢出（等价于 mod $2^{64}$），碰撞概率极低；想要绝对安全，可以用双模（$10^9+7$ 和 $10^9+9$）配 `pair`。
+
+#### 模板
+
+```cpp
+class StringHash {
+public:
+    static const uint64_t B = 1315423911ULL;  // 大奇数基底
+    std::vector<uint64_t> h;  // h[i] = s[0..i-1] 的哈希
+    std::vector<uint64_t> p;  // p[i] = B^i
+
+    StringHash(const std::string& s) {
+        int n = (int)s.size();
+        h.assign(n + 1, 0);
+        p.assign(n + 1, 0);
+        p[0] = 1;
+        for (int i = 0; i < n; ++i) {
+            h[i + 1] = h[i] * B + (unsigned char)s[i];
+            p[i + 1] = p[i] * B;
+        }
+    }
+
+    // s[l..r]（闭区间）的哈希值，O(1)
+    uint64_t get(int l, int r) const {
+        return h[r + 1] - h[l] * p[r - l + 1];
+    }
+};
+```
+
+```python
+class StringHash:
+    B = 1315423911
+    MASK = (1 << 64) - 1  # Python 整数无上限，需手动截断
+
+    def __init__(self, s: str):
+        n = len(s)
+        self.h = [0] * (n + 1)
+        self.p = [0] * (n + 1)
+        self.p[0] = 1
+        for i, ch in enumerate(s):
+            self.h[i + 1] = ((self.h[i] * self.B) + ord(ch)) & self.MASK
+            self.p[i + 1] = (self.p[i] * self.B) & self.MASK
+
+    def get(self, l: int, r: int) -> int:
+        # s[l..r]（闭区间）的哈希值
+        return (self.h[r + 1] - self.h[l] * self.p[r - l + 1]) & self.MASK
+```
+
+记忆要点：
+1. **基底选择**：131、13131、137 等大奇数都是常见基底，配 `uint64_t` 自然溢出时碰撞概率极低。
+2. **前缀哈希数组长度是 n+1**，这样 `get(0, r)` 不需要特判——和前缀和数组的 trick 一样。
+3. **子串哈希公式**：`h[r+1] - h[l] * pow(B, r-l+1)`。这一行最容易写错——`r-l+1` 必须严格匹配窗口长度。
+4. **滚动更新**：把窗口右端字符加入、左端字符移出，得到新的窗口哈希，公式为 `h_new = (h - s[left] * p) * B + s[right]`（其中 `p = B^(window_size)`）。
+5. **自然溢出 vs 双模**：自然溢出实现最简单但理论上可能碰撞；想要绝对安全用 `pair<uint64_t, uint64_t>` 配两个大质数（$10^9+7$ 和 $10^9+9$）。
+
+#### 例题：重复的 DNA 序列
+
+[LC 187. Repeated DNA Sequences](https://leetcode.com/problems/repeated-dna-sequences/)。给定长度为 $n$ 的 DNA 序列（只含 A/C/G/T），找出所有出现超过一次的长度为 10 的子串。
+
+```cpp
+class Solution {
+public:
+    vector<string> findRepeatedDnaSequences(string s) {
+        int n = (int)s.size();
+        if (n <= 10) return {};
+
+        const uint64_t B = 1315423911ULL;
+        uint64_t h = 0, p = 1;
+        // 初始化：把前 10 个字符的哈希算出来
+        for (int i = 0; i < 10; ++i) {
+            h = h * B + (unsigned char)s[i];
+            if (i > 0) p *= B;
+        }
+
+        // 哈希 → 出现的起点位置列表
+        unordered_map<uint64_t, vector<int>> pos;
+        pos[h].push_back(0);
+
+        // 滑动窗口：每个窗口哈希对应起点 i - 9
+        for (int i = 10; i < n; ++i) {
+            h = (h - (uint64_t)(unsigned char)s[i - 10] * p) * B
+                + (unsigned char)s[i];
+            pos[h].push_back(i - 9);
+        }
+
+        vector<string> ans;
+        for (auto& kv : pos) {
+            if (kv.second.size() > 1) {
+                ans.push_back(s.substr(kv.second[0], 10));
+            }
+        }
+        return ans;
+    }
+};
+```
+
+```python
+from typing import List
+
+class Solution:
+    B = 1315423911
+    MASK = (1 << 64) - 1
+
+    def findRepeatedDnaSequences(self, s: str) -> List[str]:
+        n = len(s)
+        if n <= 10:
+            return []
+        h = 0
+        p = 1
+        for i in range(10):
+            h = ((h * self.B) + ord(s[i])) & self.MASK
+            if i > 0:
+                p = (p * self.B) & self.MASK
+        pos = {h: [0]}
+        for i in range(10, n):
+            h = ((h - ord(s[i - 10]) * p) * self.B + ord(s[i])) & self.MASK
+            pos.setdefault(h, []).append(i - 9)
+        ans = []
+        for v in pos.values():
+            if len(v) > 1:
+                ans.append(s[v[0]:v[0] + 10])
+        return ans
+```
+
+记忆要点：
+- 滚动窗口哈希的核心是 `h_new = (h - s[left] * p) * B + s[right]`，其中 `p = B^(window_size)` 是预计算好的。
+- 这道题用 `unordered_map<uint64_t, vector<int>>` 把哈希映射回起点位置，是为了从哈希反推回原字符串；如果只关心"出现过几次"，可以直接用 `unordered_map<uint64_t, int>` 计数。
+- 在 ACGT 这种小字符集上，也可以用 2-bit 编码 `((h << 2) | code) & mask` 把 20 个 bit 塞进一个 int，完全避免哈希碰撞，但这就局限到固定窗口大小了。
+
+### KMP 算法
+
+KMP（Knuth-Morris-Pratt）能在 $O(n+m)$ 内完成"模式串 P 在文本串 S 中的所有匹配"。核心是预先算出 `next[i]`：`p[0..i]` 中"最长相等前后缀"的长度。这样匹配失败时，模式串不用从头来过，而是直接跳到 `next[i-1]` 继续尝试。
+
+#### next 数组的构造
+
+`next[i]` 表示 `p[0..i]` 的最长相等真前后缀的长度（即 `prefix = suffix`，且都严格短于 `p[0..i+1]`）。
+
+```cpp
+// next[i] = p[0..i] 中最长相等真前后缀的长度
+std::vector<int> buildNext(const std::string& p) {
+    int m = (int)p.size();
+    std::vector<int> nxt(m, 0);
+    // nxt[0] = 0（单个字符没有真前后缀）
+    for (int i = 1; i < m; ++i) {
+        int j = nxt[i - 1];
+        while (j > 0 && p[j] != p[i]) {
+            j = nxt[j - 1];  // 回退
+        }
+        if (p[j] == p[i]) ++j;
+        nxt[i] = j;
+    }
+    return nxt;
+}
+```
+
+记忆要点：
+- `j = nxt[i-1]` 是关键——"尝试用 `p[0..i-1]` 已经有的最长相等前后缀来扩展"。
+- 如果 `p[j] != p[i]`，就把 `j` 退回到 `nxt[j-1]`，这是一个**自我递归**的过程（"前缀的前缀还是前缀"）。
+- 最后如果 `p[j] == p[i]`，把 `j` 加 1；否则保持 0。
+
+#### 匹配过程
+
+```cpp
+std::vector<int> kmpSearch(const std::string& s, const std::string& p) {
+    std::vector<int> nxt = buildNext(p);
+    int n = (int)s.size(), m = (int)p.size();
+    std::vector<int> ans;
+    int j = 0;
+    for (int i = 0; i < n; ++i) {
+        while (j > 0 && p[j] != s[i]) {
+            j = nxt[j - 1];
+        }
+        if (p[j] == s[i]) ++j;
+        if (j == m) {
+            ans.push_back(i - m + 1);  // 找到一个匹配，起点是 i - m + 1
+            j = nxt[j - 1];  // 继续寻找下一个匹配
+        }
+    }
+    return ans;
+}
+```
+
+记忆要点：
+- **匹配失败时 `j = nxt[j-1]`，匹配成功时 `j++`**——这两个动作必须严格对称。
+- 找到一个匹配后要 `j = nxt[j-1]` 而不是 `j = 0`，因为可能存在重叠匹配（例如 `p = "aaa"`，在 `s = "aaaa"` 中匹配位置是 0, 1, 2）。
+
+#### 例题：找出字符串中第一个匹配项的下标
+
+[LC 28. Find the Index of the First Occurrence in a String](https://leetcode.com/problems/find-the-index-of-the-first-occurrence-in-a-string-in-a-string/)。返回 needle 在 haystack 中第一次出现的下标；如果不存在，返回 -1。
+
+```cpp
+class Solution {
+public:
+    int strStr(string haystack, string needle) {
+        int n = (int)haystack.size(), m = (int)needle.size();
+        if (m > n) return -1;
+
+        std::vector<int> nxt(m, 0);
+        for (int i = 1; i < m; ++i) {
+            int j = nxt[i - 1];
+            while (j > 0 && needle[j] != needle[i]) {
+                j = nxt[j - 1];
+            }
+            if (needle[j] == needle[i]) ++j;
+            nxt[i] = j;
+        }
+
+        int j = 0;
+        for (int i = 0; i < n; ++i) {
+            while (j > 0 && needle[j] != haystack[i]) {
+                j = nxt[j - 1];
+            }
+            if (needle[j] == haystack[i]) ++j;
+            if (j == m) return i - m + 1;
+        }
+        return -1;
+    }
+};
+```
+
+```python
+class Solution:
+    def strStr(self, haystack: str, needle: str) -> int:
+        n, m = len(haystack), len(needle)
+        if m > n:
+            return -1
+        nxt = [0] * m
+        for i in range(1, m):
+            j = nxt[i - 1]
+            while j > 0 and needle[j] != needle[i]:
+                j = nxt[j - 1]
+            if needle[j] == needle[i]:
+                j += 1
+            nxt[i] = j
+        j = 0
+        for i in range(n):
+            while j > 0 and needle[j] != haystack[i]:
+                j = nxt[j - 1]
+            if needle[j] == haystack[i]:
+                j += 1
+            if j == m:
+                return i - m + 1
+        return -1
+```
+
+记忆要点：构造 `next` 和匹配 `s` 用的循环结构几乎完全一样——都是"匹配失败就退到 `next[j-1]`，匹配成功 `j++`"。背下一种就等于背下两种。
+
+### Z 函数 - Z-Algorithm
+
+Z 函数 $z[i]$ 表示 $s$ 和它的后缀 $s[i..n-1]$ 的最长公共前缀长度。预处理 $O(n)$ 后，可以用 Z 函数做模式匹配。
+
+#### 模板
+
+```cpp
+std::vector<int> zFunction(const std::string& s) {
+    int n = (int)s.size();
+    std::vector<int> z(n, 0);
+    int l = 0, r = 0;  // 当前已知的最右 Z-box [l, r]
+    for (int i = 1; i < n; ++i) {
+        if (i <= r) {
+            z[i] = std::min(r - i + 1, z[i - l]);
+        }
+        while (i + z[i] < n && s[z[i]] == s[i + z[i]]) {
+            ++z[i];
+        }
+        if (i + z[i] - 1 > r) {
+            l = i;
+            r = i + z[i] - 1;
+        }
+    }
+    return z;
+}
+```
+
+记忆要点：
+1. **Z-box 维护**：维护一个最右的 Z-box `[l, r]`。如果当前 `i` 在 box 内，可以直接"借" `z[i-l]` 的值（但不超过 `r-i+1`）。
+2. **扩展**：从初始猜测开始，尝试向右扩展直到不匹配为止。
+3. **更新 box**：如果扩展后的 `i + z[i] - 1` 超过了 `r`，更新 `l = i, r = i + z[i] - 1`。
+
+#### 模式匹配：把模式串拼到文本前面
+
+Z 函数最常见的应用是模式匹配：把 `p + "#" + s` 拼成一个新串 `concat`，对 `concat` 求 Z 数组。如果 `z[i] == |p|`，说明 `p` 从 `s[i - |p| - 1]` 开始匹配成功。
+
+```cpp
+// 找出 pattern p 在 s 中的所有匹配位置
+std::vector<int> findMatches(const std::string& s, const std::string& p) {
+    std::string concat = p + "#" + s;
+    auto z = zFunction(concat);
+    int m = (int)p.size();
+    std::vector<int> ans;
+    for (int i = m + 1; i < (int)concat.size(); ++i) {
+        if (z[i] == m) {
+            ans.push_back(i - m - 1);
+        }
+    }
+    return ans;
+}
+```
+
+记忆要点：Z 函数和 KMP 都能做模式匹配，KMP 更短一些（代码量小一半），但 Z 函数更容易扩展到"找所有公共前缀长度"等更复杂的问题。
+
+### Manacher 算法
+
+Manacher 能在 $O(n)$ 内求出字符串的最长回文子串。核心 trick 是在字符之间（和两端）插入特殊字符 `#`，把"奇数长度"和"偶数长度"的回文统一成"奇数长度"。
+
+#### 模板
+
+```cpp
+// 返回 s 的最长回文子串
+std::string manacher(const std::string& s) {
+    // 插入 #：例如 "aba" -> "^#a#b#a#$"
+    std::string t = "^#";
+    for (char c : s) {
+        t += c;
+        t += "#";
+    }
+    t += "$";
+
+    int n = (int)t.size();
+    std::vector<int> p(n, 0);  // p[i] = 以 i 为中心的回文半径
+    int c = 0, r = 0;          // 当前最右回文中心和右边界
+    for (int i = 1; i < n - 1; ++i) {
+        int mirror = 2 * c - i;
+        if (i < r) {
+            p[i] = std::min(r - i, p[mirror]);
+        }
+        while (t[i + p[i] + 1] == t[i - p[i] - 1]) {
+            ++p[i];
+        }
+        if (i + p[i] > r) {
+            c = i;
+            r = i + p[i];
+        }
+    }
+
+    // 找到最大半径
+    int max_i = 0;
+    for (int i = 1; i < n - 1; ++i) {
+        if (p[i] > p[max_i]) max_i = i;
+    }
+    int start = (max_i - p[max_i]) / 2;
+    return s.substr(start, p[max_i]);
+}
+```
+
+记忆要点：
+1. **插入 `#` 和边界哨兵 `^/$`**：边界哨兵让 `while` 扩展自动终止，不用特判越界。
+2. **p[i] 的含义**：以 i 为中心的回文"半径"，长度是 `p[i]`（含中心），对应原串的回文长度就是 `p[i]`。
+3. **mirror 公式 `mirror = 2*c - i`**：这是以 c 为中心的对称点。
+4. **更新 c, r**：每一步都可能更新最右回文边界，这正是 Manacher 能维持 $O(n)$ 的关键。
+
+#### 例题：最长回文子串
+
+[LC 5. Longest Palindromic Substring](https://leetcode.com/problems/longest-palindromic-substring/)。直接套用上面的 Manacher 实现即可。
+
+```cpp
+class Solution {
+public:
+    string longestPalindrome(string s) {
+        std::string t = "^#";
+        for (char c : s) {
+            t += c;
+            t += "#";
+        }
+        t += "$";
+
+        int n = (int)t.size();
+        std::vector<int> p(n, 0);
+        int c = 0, r = 0;
+
+        for (int i = 1; i < n - 1; ++i) {
+            int mirror = 2 * c - i;
+            if (i < r) {
+                p[i] = std::min(r - i, p[mirror]);
+            }
+            while (t[i + p[i] + 1] == t[i - p[i] - 1]) {
+                ++p[i];
+            }
+            if (i + p[i] > r) {
+                c = i;
+                r = i + p[i];
+            }
+        }
+
+        int max_i = 0;
+        for (int i = 1; i < n - 1; ++i) {
+            if (p[i] > p[max_i]) max_i = i;
+        }
+        int start = (max_i - p[max_i]) / 2;
+        return s.substr(start, p[max_i]);
+    }
+};
+```
+
+```python
+class Solution:
+    def longestPalindrome(self, s: str) -> str:
+        t = "^#" + "#".join(s) + "#$"
+        n = len(t)
+        p = [0] * n
+        c = r = 0
+        for i in range(1, n - 1):
+            mirror = 2 * c - i
+            if i < r:
+                p[i] = min(r - i, p[mirror])
+            while t[i + p[i] + 1] == t[i - p[i] - 1]:
+                p[i] += 1
+            if i + p[i] > r:
+                c = i
+                r = i + p[i]
+
+        max_i = max(range(1, n - 1), key=lambda i: p[i])
+        start = (max_i - p[max_i]) // 2
+        return s[start:start + p[max_i]]
+```
+
+记忆要点：
+- Manacher 比"中心扩展"（每个位置向两侧扩展）快很多——后者最坏 $O(n^2)$，前者保证 $O(n)$。
+- 输出时回文长度 = `p[max_i]`，起点 = `(max_i - p[max_i]) / 2`。
+- 如果不需要"重建"最长回文子串，只需要长度，可以直接返回 `p[max_i]`。
+
 ## 并查集 - Union-Find / DSU
 
 并查集（Disjoint Set Union）是 ACM 比赛中最容易**写不出**的数据结构之一——核心代码只有十几行，但如果没有背下"路径压缩 + 按秩合并"两个优化，临场大概率会写错或者写出退化到 `O(n)` 的版本。它主要用于**处理元素的分组关系**和**判断两个元素是否属于同一组**——典型场景包括：图中的连通分量、岛屿问题、生成树相关（Kruskal）、冗余边检测等。
@@ -2768,5 +3199,519 @@ class Solution:
         # 2) 遍历 edges，第一次让 unite 返回 False 时返回当前边
         pass
 ```
+
+## 动态规划 - Dynamic Programming
+
+动态规划（DP）解决"原问题的解可由子问题的解推出"的问题。它不是某个具体算法，而是一种"用空间换时间"的范式——把子问题的答案存下来，下次需要时直接查表，避免重复计算。
+
+DP 的四要素：
+1. **状态定义**：`dp[i]`（或 `dp[i][j]`）表示什么？
+2. **转移方程**：`dp[i]` 怎么由之前的 `dp` 推出？
+3. **初始化**：哪些基础情况要直接给出？
+4. **遍历顺序**：保证计算 `dp[i]` 时，所需的小问题已经算好。
+
+最容易出错的是"状态定义"——状态没想清楚，转移方程就写不出来。临场判断能不能用 DP 的标志是：**问题有重叠子问题 + 最优子结构**。
+
+### 一维 DP
+
+一维 DP 的状态只用一个下标描述，转移通常从前面（或后面）的状态推出。最经典的入门题是斐波那契 / 爬楼梯。
+
+#### 例题 1：爬楼梯
+
+[LC 70. Climbing Stairs](https://leetcode.com/problems/climbing-stairs/)。一次爬 1 或 2 阶，爬到第 n 阶有几种方法。
+
+```cpp
+class Solution {
+public:
+    int climbStairs(int n) {
+        if (n <= 2) return n;
+        int a = 1, b = 2;
+        for (int i = 3; i <= n; ++i) {
+            int c = a + b;
+            a = b;
+            b = c;
+        }
+        return b;
+    }
+};
 ```
+
+```python
+class Solution:
+    def climbStairs(self, n: int) -> int:
+        if n <= 2:
+            return n
+        a, b = 1, 2
+        for _ in range(3, n + 1):
+            a, b = b, a + b
+        return b
+```
+
+记忆要点：`dp[i] = dp[i-1] + dp[i-2]` 滚动数组后只需要 `a, b` 两个变量。`dp[1] = 1, dp[2] = 2` 是基础情况，循环从 `i = 3` 开始。
+
+#### 例题 2：打家劫舍
+
+[LC 198. House Robber](https://leetcode.com/problems/house-robber/)。每间房有一定金额，相邻的两间不能同时偷，求最大金额。
+
+状态：`dp[i]` = 偷到第 i 间房为止的最大金额（不一定偷第 i 间）。转移：`dp[i] = max(dp[i-1], dp[i-2] + nums[i])`。
+
+```cpp
+class Solution {
+public:
+    int rob(vector<int>& nums) {
+        int n = (int)nums.size();
+        if (n == 0) return 0;
+        if (n == 1) return nums[0];
+        int a = nums[0];
+        int b = std::max(nums[0], nums[1]);
+        for (int i = 2; i < n; ++i) {
+            int c = std::max(b, a + nums[i]);
+            a = b;
+            b = c;
+        }
+        return b;
+    }
+};
+```
+
+```python
+class Solution:
+    def rob(self, nums: List[int]) -> int:
+        n = len(nums)
+        if n == 0:
+            return 0
+        if n == 1:
+            return nums[0]
+        a, b = nums[0], max(nums[0], nums[1])
+        for i in range(2, n):
+            a, b = b, max(b, a + nums[i])
+        return b
+```
+
+记忆要点：滚动数组的关键是 `a, b = b, max(b, a + nums[i])`——Python 元组赋值保证先算右边再赋值，不会出现"一边更新一边引用"的问题。
+
+### 0/1 背包
+
+0/1 背包问题：$N$ 件物品，第 $i$ 件重 $w[i]$、价值 $v[i]$，背包容量 $W$。每件物品最多选一次，求最大价值。
+
+模板（压缩到一维）：`dp[j]` = 容量为 $j$ 的背包能装的最大价值。**倒序遍历** $j$ 从 $W$ 到 $w[i]$，转移 `dp[j] = max(dp[j], dp[j - w[i]] + v[i])`。
+
+#### 例题：分割等和子集
+
+[LC 416. Partition Equal Subset Sum](https://leetcode.com/problems/partition-equal-subset-sum/)。判断数组能否分成两个子集，使它们的和相等。
+
+变形：能否从数组中选出若干个数，使得它们的和恰好为 `total / 2`。这就是 0/1 背包（物品价值 = 物品重量 = nums[i]，背包容量 = total/2）。
+
+```cpp
+class Solution {
+public:
+    bool canPartition(vector<int>& nums) {
+        int total = std::accumulate(nums.begin(), nums.end(), 0);
+        if (total % 2 != 0) return false;
+        int W = total / 2;
+        std::vector<int> dp(W + 1, 0);
+        for (int num : nums) {
+            for (int j = W; j >= num; --j) {
+                dp[j] = std::max(dp[j], dp[j - num] + num);
+            }
+        }
+        return dp[W] == W;
+    }
+};
+```
+
+```python
+from typing import List
+
+class Solution:
+    def canPartition(self, nums: List[int]) -> bool:
+        total = sum(nums)
+        if total % 2 != 0:
+            return False
+        W = total // 2
+        dp = [0] * (W + 1)
+        for num in nums:
+            for j in range(W, num - 1, -1):
+                dp[j] = max(dp[j], dp[j - num] + num)
+        return dp[W] == W
+```
+
+记忆要点：
+1. **0/1 背包内层 j 必须倒序遍历**：因为每件物品只能用一次，正序遍历会让 `dp[j-num]` 已经是"用了当前物品"的值，导致重复使用。
+2. **完全背包内层 j 必须正序遍历**：因为每件物品可以用无限次，正序遍历能让同一个物品被多次使用。
+3. **状态压缩到一维**：原本是 `dp[i][j]`（前 i 件物品、容量 j），压缩后只需 `dp[j]`，因为第 i 件的处理逻辑只依赖第 i-1 件的 `dp` 值。
+
+### 完全背包
+
+完全背包问题：每件物品可以选无限次。
+
+#### 例题：零钱兑换
+
+[LC 322. Coin Change](https://leetcode.com/problems/coin-change/)。给定不同面额的硬币和总金额，求凑出该金额所需的最少硬币数；不能则返回 -1。
+
+```cpp
+class Solution {
+public:
+    int coinChange(vector<int>& coins, int amount) {
+        const int INF = amount + 1;
+        std::vector<int> dp(amount + 1, INF);
+        dp[0] = 0;
+        for (int coin : coins) {
+            for (int j = coin; j <= amount; ++j) {
+                dp[j] = std::min(dp[j], dp[j - coin] + 1);
+            }
+        }
+        return dp[amount] == INF ? -1 : dp[amount];
+    }
+};
+```
+
+```python
+class Solution:
+    def coinChange(self, coins: List[int], amount: int) -> int:
+        INF = amount + 1
+        dp = [INF] * (amount + 1)
+        dp[0] = 0
+        for coin in coins:
+            for j in range(coin, amount + 1):
+                dp[j] = min(dp[j], dp[j - coin] + 1)
+        return -1 if dp[amount] == INF else dp[amount]
+```
+
+记忆要点：
+- 完全背包"最值"问题：内层 j **正序**遍历，每件物品可以用无限次。
+- 完全背包"组合数"问题：要先遍历物品、再遍历容量（`for coin: for j`）；如果是"排列数"，要先遍历容量、再遍历物品。
+- 这题 `dp[j]` 初始化为 `INF = amount + 1`（凑不出比 amount+1 还多硬币），最后判断 `dp[amount] == INF` 即可。
+
+### 二维 DP
+
+二维 DP 的状态用两个下标描述，转移需要看"当前格子"和"周围的格子"。最常见的是网格路径和字符串编辑距离。
+
+#### 例题 1：不同路径
+
+[LC 62. Unique Paths](https://leetcode.com/problems/unique-paths/)。机器人从网格左上角到右下角，每次只能向右或向下走，求路径数。
+
+```cpp
+class Solution {
+public:
+    int uniquePaths(int m, int n) {
+        std::vector<int> dp(n, 1);
+        for (int i = 1; i < m; ++i) {
+            for (int j = 1; j < n; ++j) {
+                dp[j] += dp[j - 1];
+            }
+        }
+        return dp[n - 1];
+    }
+};
+```
+
+```python
+class Solution:
+    def uniquePaths(self, m: int, n: int) -> int:
+        dp = [1] * n
+        for i in range(1, m):
+            for j in range(1, n):
+                dp[j] += dp[j - 1]
+        return dp[n - 1]
+```
+
+记忆要点：二维 DP 经常可以压缩到一维——`dp[j]` 不断被更新，最终一行结束时 `dp[n-1]` 就是答案。
+
+#### 例题 2：最长公共子序列
+
+[LC 1143. Longest Common Subsequence](https://leetcode.com/problems/longest-common-subsequence/)。求两个字符串的最长公共子序列长度。
+
+```cpp
+class Solution {
+public:
+    int longestCommonSubsequence(string s, string t) {
+        int m = (int)s.size(), n = (int)t.size();
+        std::vector<std::vector<int>> dp(m + 1,
+            std::vector<int>(n + 1, 0));
+        for (int i = 1; i <= m; ++i) {
+            for (int j = 1; j <= n; ++j) {
+                if (s[i - 1] == t[j - 1]) {
+                    dp[i][j] = dp[i - 1][j - 1] + 1;
+                } else {
+                    dp[i][j] = std::max(
+                        dp[i - 1][j],
+                        dp[i][j - 1]
+                    );
+                }
+            }
+        }
+        return dp[m][n];
+    }
+};
+```
+
+```python
+class Solution:
+    def longestCommonSubsequence(self, s: str, t: str) -> int:
+        m, n = len(s), len(t)
+        dp = [[0] * (n + 1) for _ in range(m + 1)]
+        for i in range(1, m + 1):
+            for j in range(1, n + 1):
+                if s[i - 1] == t[j - 1]:
+                    dp[i][j] = dp[i - 1][j - 1] + 1
+                else:
+                    dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])
+        return dp[m][n]
+```
+
+记忆要点：
+- 字符串类 DP 的状态几乎都是 `dp[i][j]` = `s[0..i-1]` 和 `t[0..j-1]` 的某种"度量"，边界 `dp[0][j] = dp[i][0] = 0`。
+- "字符相等" → 取左上角 + 1，"字符不等" → 取左/上中的较大值。
+
+#### 例题 3：编辑距离
+
+[LC 72. Edit Distance](https://leetcode.com/problems/edit-distance/)。给定两个单词 word1 和 word2，返回将 word1 转换为 word2 所使用的最少操作数（插入、删除、替换，每次一个字符）。
+
+```cpp
+class Solution {
+public:
+    int minDistance(string word1, string word2) {
+        int m = (int)word1.size(), n = (int)word2.size();
+        std::vector<std::vector<int>> dp(m + 1,
+            std::vector<int>(n + 1, 0));
+        for (int i = 0; i <= m; ++i) dp[i][0] = i;
+        for (int j = 0; j <= n; ++j) dp[0][j] = j;
+        for (int i = 1; i <= m; ++i) {
+            for (int j = 1; j <= n; ++j) {
+                if (word1[i - 1] == word2[j - 1]) {
+                    dp[i][j] = dp[i - 1][j - 1];
+                } else {
+                    dp[i][j] = std::min({
+                        dp[i - 1][j] + 1,        // 删除 word1[i-1]
+                        dp[i][j - 1] + 1,        // 插入 word2[j-1]
+                        dp[i - 1][j - 1] + 1     // 替换
+                                       });
+                }
+            }
+        }
+        return dp[m][n];
+    }
+};
+```
+
+```python
+class Solution:
+    def minDistance(self, word1: str, word2: str) -> int:
+        m, n = len(word1), len(word2)
+        dp = [[0] * (n + 1) for _ in range(m + 1)]
+        for i in range(m + 1):
+            dp[i][0] = i
+        for j in range(n + 1):
+            dp[0][j] = j
+        for i in range(1, m + 1):
+            for j in range(1, n + 1):
+                if word1[i - 1] == word2[j - 1]:
+                    dp[i][j] = dp[i - 1][j - 1]
+                else:
+                    dp[i][j] = min(
+                        dp[i - 1][j] + 1,        # 删除
+                        dp[i][j - 1] + 1,        # 插入
+                        dp[i - 1][j - 1] + 1     # 替换
+                    )
+        return dp[m][n]
+```
+
+记忆要点：
+- 初始化：`dp[i][0] = i`（删 i 个字符），`dp[0][j] = j`（插 j 个字符）。
+- 三个操作的转移方向：删除看上、插入看左、替换看左上。
+- "字符相等"时直接取 `dp[i-1][j-1]`，因为不需要任何操作。
+
+### 子序列 DP - LIS
+
+#### 例题：最长上升子序列
+
+[LC 300. Longest Increasing Subsequence](https://leetcode.com/problems/longest-increasing-subsequence/)。求数组中最长严格递增子序列的长度。
+
+```cpp
+class Solution {
+public:
+    int lengthOfLIS(vector<int>& nums) {
+        int n = (int)nums.size();
+        std::vector<int> dp(n, 1);
+        int ans = 1;
+        for (int i = 1; i < n; ++i) {
+            for (int j = 0; j < i; ++j) {
+                if (nums[j] < nums[i]) {
+                    dp[i] = std::max(dp[i], dp[j] + 1);
+                }
+            }
+            ans = std::max(ans, dp[i]);
+        }
+        return ans;
+    }
+};
+```
+
+```python
+class Solution:
+    def lengthOfLIS(self, nums: List[int]) -> int:
+        n = len(nums)
+        dp = [1] * n
+        ans = 1
+        for i in range(1, n):
+            for j in range(i):
+                if nums[j] < nums[i]:
+                    dp[i] = max(dp[i], dp[j] + 1)
+            ans = max(ans, dp[i])
+        return ans
+```
+
+记忆要点：标准 $O(n^2)$ LIS 模板——`dp[i]` 表示以 `nums[i]` 结尾的最长递增子序列长度。如果需要 $O(n \log n)$，用"贪心 + 二分"维护一个 `tail` 数组（`bisect_left` 在 Python 中）。
+
+### 状态机 DP - 股票系列
+
+股票系列是一类经典的状态机 DP：每天有"持有股票"和"不持有股票"两种状态，转移由"买/卖/不动"三种动作构成。
+
+#### 例题 1：买卖股票的最佳时机
+
+[LC 121. Best Time to Buy and Sell Stock](https://leetcode.com/problems/best-time-to-buy-and-sell-stock/)。只能买卖一次，求最大利润。
+
+状态：`dp_no_stock` = 不持有股票的最大利润；`dp_have_stock` = 持有股票的最大利润。
+
+```cpp
+class Solution {
+public:
+    int maxProfit(vector<int>& prices) {
+        int n = (int)prices.size();
+        int dp_no_stock = 0;
+        int dp_have_stock = -prices[0];
+        for (int i = 1; i < n; ++i) {
+            int new_no_stock = std::max(dp_no_stock,
+                                        dp_have_stock + prices[i]);
+            int new_have_stock = std::max(dp_have_stock,
+                                          dp_no_stock - prices[i]);
+            dp_no_stock = new_no_stock;
+            dp_have_stock = new_have_stock;
+        }
+        return dp_no_stock;
+    }
+};
+```
+
+```python
+class Solution:
+    def maxProfit(self, prices: List[int]) -> int:
+        n = len(prices)
+        dp_no_stock = 0
+        dp_have_stock = -prices[0]
+        for i in range(1, n):
+            new_no_stock = max(dp_no_stock, dp_have_stock + prices[i])
+            new_have_stock = max(dp_have_stock, dp_no_stock - prices[i])
+            dp_no_stock = new_no_stock
+            dp_have_stock = new_have_stock
+        return dp_no_stock
+```
+
+记忆要点：
+- 这题也可以用"维护至今最低价"的贪心 O(n) 解法——但 DP 写法更容易推广到多次交易 / 冷冻期 / 手续费等变种。
+- 状态机 DP 的关键是：**先算 `new_no_stock` 和 `new_have_stock`，再赋值**——不能边算边覆盖，否则会出现"同一天既买又卖"的错误。
+
+#### 例题 2：含冷冻期的股票买卖
+
+[LC 309. Best Time to Buy and Sell Stock with Cooldown](https://leetcode.com/problems/best-time-to-buy-and-sell-stock-with-cooldown/)。卖出后第二天不能买入。
+
+```cpp
+class Solution {
+public:
+    int maxProfit(vector<int>& prices) {
+        int n = (int)prices.size();
+        if (n == 0) return 0;
+        std::vector<int> hold(n, 0), free(n, 0);
+        hold[0] = -prices[0];
+        free[0] = 0;
+        for (int i = 1; i < n; ++i) {
+            int prev_free = (i >= 2) ? free[i - 2] : 0;
+            hold[i] = std::max(hold[i - 1], prev_free - prices[i]);
+            free[i] = std::max(free[i - 1], hold[i - 1] + prices[i]);
+        }
+        return free[n - 1];
+    }
+};
+```
+
+```python
+class Solution:
+    def maxProfit(self, prices: List[int]) -> int:
+        n = len(prices)
+        if n == 0:
+            return 0
+        hold = [-prices[0]] + [0] * (n - 1)
+        free = [0] * n
+        for i in range(1, n):
+            prev_free = free[i - 2] if i >= 2 else 0
+            hold[i] = max(hold[i - 1], prev_free - prices[i])
+            free[i] = max(free[i - 1], hold[i - 1] + prices[i])
+        return free[n - 1]
+```
+
+记忆要点：
+- `hold[i] = max(hold[i-1], prev_free - prices[i])`：不操作 / 从"两天前的 free"买入。
+- `free[i] = max(free[i-1], hold[i-1] + prices[i])`：不操作 / 卖出昨天的持股。
+- "两天前"是关键——冷冻期让"昨天刚卖出"的状态不能立刻买入。
+
+### 区间 DP
+
+区间 DP 的状态是 `dp[i][j]` = 区间 `[i, j]` 上的最优解，转移通常枚举分割点 `k`：`dp[i][j] = min(dp[i][k] + dp[k+1][j]) + cost(i, j)`。
+
+#### 例题：最长回文子序列
+
+[LC 516. Longest Palindromic Subsequence](https://leetcode.com/problems/longest-palindromic-subsequence/)。求字符串的最长回文子序列长度。
+
+```cpp
+class Solution {
+public:
+    int longestPalindromeSubseq(string s) {
+        int n = (int)s.size();
+        std::vector<std::vector<int>> dp(n, std::vector<int>(n, 0));
+        for (int i = 0; i < n; ++i) dp[i][i] = 1;
+        for (int len = 2; len <= n; ++len) {
+            for (int i = 0; i + len <= n; ++i) {
+                int j = i + len - 1;
+                if (s[i] == s[j]) {
+                    dp[i][j] = (len == 2) ? 2 : dp[i + 1][j - 1] + 2;
+                } else {
+                    dp[i][j] = std::max(dp[i + 1][j], dp[i][j - 1]);
+                }
+            }
+        }
+        return dp[0][n - 1];
+    }
+};
+```
+
+```python
+class Solution:
+    def longestPalindromeSubseq(self, s: str) -> int:
+        n = len(s)
+        dp = [[0] * n for _ in range(n)]
+        for i in range(n):
+            dp[i][i] = 1
+        for length in range(2, n + 1):
+            for i in range(n - length + 1):
+                j = i + length - 1
+                if s[i] == s[j]:
+                    dp[i][j] = 2 if length == 2 else dp[i + 1][j - 1] + 2
+                else:
+                    dp[i][j] = max(dp[i + 1][j], dp[i][j - 1])
+        return dp[0][n - 1]
+```
+
+记忆要点：
+- 区间 DP 通常按"区间长度"遍历（`len = 2, 3, ..., n`），保证 `dp[i+1][j-1]` 已经算好。
+- "两端字符相等" → 取内层 + 2（长度为 2 时直接是 2，因为内层是空串）。
+- "两端字符不等" → 取去掉任一端的最大值。
+
+记忆要点（DP 全章）：
+1. **状态定义先行**：写不出转移方程，先想想 `dp[i]`（或 `dp[i][j]`）到底表示什么。
+2. **滚动数组的边界**：滚动时要注意 `dp[i-2]` 是不是已经被覆盖（冷冻期那题就要特判 `i >= 2`）。
+3. **背包内层 j 的方向**：0/1 背包倒序、完全背包正序——最容易记错的一条。
+4. **二维 DP 可以压成一维**：当转移只依赖"上一行"或"左、上、左上"时，可以滚动数组到一维。
+5. **区间 DP 按长度遍历**：从小区间推到大区间，避免顺序问题。
+6. **状态机 DP 先算 new 再赋值**：避免"同一天既买又卖"导致状态错乱。
 
