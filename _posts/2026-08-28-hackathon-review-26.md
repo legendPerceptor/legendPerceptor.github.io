@@ -14,7 +14,7 @@ math: true
 
 **题目**：给定一个$m \times n$的矩阵，矩阵里的数都是非负整数，构造由同心正方形堆叠而成的乘积靶，最中心的一个正方形的乘积数是$k$，第二个$3 \times 3$的正方形的乘积数是$k-1$，第三个$5 \times 5$的正方形乘积数是$k-2$，以此类推，最大的一个正方形的乘积数是1。把这个乘积靶放在矩阵中，矩阵对应位置的元素和乘积靶的乘积数相乘求和，得到一个结果result，问对每个给定的矩阵，这个结果result最大是多少？
 
-**解题思路**:
+### 基本解题思路
 
 这个result可以拆成$k$个同心全1的正方形相加，有
 
@@ -77,6 +77,132 @@ long long maxTargetResult(const vector<vector<int>> &matrix) {
                                        centerRow + radius, centerCol + radius);
             }
             answer = max(answer, result);
+        }
+    }
+    return answer;
+}
+```
+
+### 解法二：二阶差分 + 对角线前缀和
+
+上面的做法对每个中心枚举一次半径。实际上可以把乘积靶看成一个二维卷积核：
+
+$$ W(x,y)=k-\max(|x|,|y|),\qquad |x|,|y|<k $$
+
+设靶心放在 $(i,j)$ 时的答案为 $F(i,j)$，矩阵外的元素都视为0。对水平方向做二阶差分：
+
+$$ D(i,j)=F(i,j+1)-2F(i,j)+F(i,j-1) $$
+
+固定 $x$ 后，$W(x,y)$ 关于 $y$ 是一段“平台加斜坡”。二阶差分后，整段区间内部都变成0，只在 `y=-k,-|x|,|x|,k` 四个位置非零。因此令 $r=k-1$，可以得到
+
+$$
+\begin{aligned}
+D(i,j)= {}& \sum_{x=-r}^{r} A(i+x,j-k)
+          + \sum_{x=-r}^{r} A(i+x,j+k) \\
+         &- \sum_{x=-r}^{r} A(i+x,j+x)
+          - \sum_{x=-r}^{r} A(i+x,j-x).
+\end{aligned}
+$$
+
+右边分别是两条竖直线段和两条对角线段。预处理列前缀和、主对角线前缀和与副对角线前缀和后，$D(i,j)$ 可以在 $O(1)$ 时间算出。
+
+接下来从矩阵左侧之外开始，利用
+
+$$ F(i,j+1)=D(i,j)+2F(i,j)-F(i,j-1) $$
+
+依次恢复这一行所有位置的结果。由于核的水平半径为 $k-1$，有 $F(i,-k-1)=F(i,-k)=0$，所以递推的初值也是已知的。整个算法只扫描常数次矩阵，时间复杂度为 $O(mn)$，与 $k$ 无关；空间复杂度为 $O(mn)$。
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+long long maxTargetResult2(const vector<vector<int>>& matrix) {
+    int m = static_cast<int>(matrix.size());
+    if (m == 0 || matrix[0].empty()) {
+        return 0;
+    }
+    int n = static_cast<int>(matrix[0].size());
+    int k = (min(m, n) + 1) / 2;
+    int radius = k - 1;
+
+    // column[i + 1][j]: 第j列前i个元素的和
+    vector<vector<long long>> column(m + 1, vector<long long>(n));
+    // diagonal[i + 1][j + 1]: 从左上方向走到(i,j)的前缀和
+    vector<vector<long long>> diagonal(m + 1,
+                                       vector<long long>(n + 1));
+    // antiDiagonal[i + 1][j]: 从右上方向走到(i,j)的前缀和
+    vector<vector<long long>> antiDiagonal(m + 1,
+                                           vector<long long>(n + 1));
+
+    for (int i = 0; i < m; ++i) {
+        for (int j = 0; j < n; ++j) {
+            column[i + 1][j] = column[i][j] + matrix[i][j];
+            diagonal[i + 1][j + 1] = diagonal[i][j] + matrix[i][j];
+        }
+        for (int j = n - 1; j >= 0; --j) {
+            antiDiagonal[i + 1][j] =
+                antiDiagonal[i][j + 1] + matrix[i][j];
+        }
+    }
+
+    auto columnSum = [&](int centerRow, int col) -> long long {
+        if (col < 0 || col >= n) {
+            return 0;
+        }
+        int top = max(0, centerRow - radius);
+        int bottom = min(m - 1, centerRow + radius);
+        return column[bottom + 1][col] - column[top][col];
+    };
+
+    // 求 sum matrix[centerRow+t][centerCol+direction*t]。
+    // direction=1 是主对角线，direction=-1 是副对角线。
+    auto diagonalSum = [&](int centerRow, int centerCol,
+                           int direction) -> long long {
+        int low = max(-radius, -centerRow);
+        int high = min(radius, m - 1 - centerRow);
+        if (direction == 1) {
+            low = max(low, -centerCol);
+            high = min(high, n - 1 - centerCol);
+        } else {
+            low = max(low, centerCol - (n - 1));
+            high = min(high, centerCol);
+        }
+        if (low > high) {
+            return 0;
+        }
+
+        int topRow = centerRow + low;
+        int topCol = centerCol + direction * low;
+        int bottomRow = centerRow + high;
+        int bottomCol = centerCol + direction * high;
+
+        if (direction == 1) {
+            return diagonal[bottomRow + 1][bottomCol + 1] -
+                   diagonal[topRow][topCol];
+        }
+        return antiDiagonal[bottomRow + 1][bottomCol] -
+               antiDiagonal[topRow][topCol + 1];
+    };
+
+    long long answer = 0;
+    // 只枚举能完整放下乘积靶的行。
+    for (int i = radius; i + radius < m; ++i) {
+        long long previous = 0;  // F(i, -k-1)
+        long long current = 0;   // F(i, -k)
+
+        // 用D(i,j)算出F(i,j+1)，直到恢复到最后一个合法中心。
+        for (int j = -k; j < n - radius - 1; ++j) {
+            long long difference =
+                columnSum(i, j - k) + columnSum(i, j + k) -
+                diagonalSum(i, j, 1) - diagonalSum(i, j, -1);
+            long long next = difference + 2 * current - previous;
+            previous = current;
+            current = next;
+
+            int centerCol = j + 1;
+            if (centerCol >= radius) {
+                answer = max(answer, current);
+            }
         }
     }
     return answer;
