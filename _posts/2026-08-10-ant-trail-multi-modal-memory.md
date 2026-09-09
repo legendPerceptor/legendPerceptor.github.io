@@ -607,8 +607,7 @@ Double check the qa section in `config/m3/pipelines/video_episodic_full.yaml`, m
 Use the following command to run a complete example with face recognition, voice ASR, speaker diarization, spaker embedding, etc. Remember to check the work directory, log path, and storage database settings.
 
 ```bash
-# Reuse the STORAGE_DB_* values loaded from deploy/.env.
-export GRAPH_DSN="host=${STORAGE_DB_HOST} port=${STORAGE_DB_HOST_PORT} dbname=${STORAGE_DB_NAME} user=${STORAGE_DB_USER} password=${STORAGE_DB_PASSWORD}"
+# We no longer need to pass in the connection_string as database information is loaded from ogmemory.yaml.
 uv run --no-sync python -m m3.run_video_pipeline \
     --pipeline config/m3/pipelines/video_episodic_full.yaml \
     --video data/m3/videos/robot/bedroom_03.mp4 \
@@ -617,8 +616,6 @@ uv run --no-sync python -m m3.run_video_pipeline \
     --work-dir data/m3_runs/bedroom_03_full_0807_qa \
     --config data/ogmem_YOUR_USER.resolved.yaml \
     --graph-store sql \
-    --connection-string "$GRAPH_DSN" \
-    --llm minimax \
     --build-index \
     --enable-stage voice_asr \
     --enable-stage speaker_diarization \
