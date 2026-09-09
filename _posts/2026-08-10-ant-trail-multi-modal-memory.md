@@ -250,13 +250,35 @@ git checkout server
 cd deploy
 ```
 
-There are many environment varaibles to set. We prepared `.env.example` and `ogmemory.example.yaml` to get you started. Since there are too many optional variables. I provide a complete list of variables that you absolutely need to start AntTrail properly.
+Copy the deployment templates for a new installation, then edit `.env` and `ogmemory.yaml`:
+
+```bash
+cp .env.example .env
+cp ogmemory.example.yaml ogmemory.yaml
+```
+
+For an existing installation, update your files in place and preserve your database passwords, container names, ports, and Compose project name. The database environment variables now use two families: `STORAGE_DB_*` for SQL storage (Postgres), and `VECTOR_DB_*` for the vector database (openGauss in this tutorial).
+
+| Previous variable | Current variable |
+| --- | --- |
+| `OG_PASSWORD` | `VECTOR_DB_PASSWORD` |
+| `OG_CONTAINER_NAME` | `VECTOR_DB_CONTAINER_NAME` |
+| `OG_HOST_PORT` | `VECTOR_DB_HOST_PORT` |
+| `OG_PORT` | `VECTOR_DB_PORT` |
+| `OPENGAUSS_HOST_IP`, `OPENGAUSS_HOST` | `VECTOR_DB_HOST` |
+| `POSTGRES_PASSWORD` | `STORAGE_DB_PASSWORD` |
+| `POSTGRES_HOST_PORT` | `STORAGE_DB_HOST_PORT` |
+| `POSTGRES_CONTAINER_NAME` | `STORAGE_DB_CONTAINER_NAME` |
+
+`STORAGE_DB_HOST` keeps its name. Image settings such as `OG_IMAGE_REPO` and `OG_IMAGE_TAG`, and authentication settings such as `OG_AUTH_API_KEY`, also keep their names. Compose maps the new database variables to the variables required by each database image internally.
+
+The following `.env` settings reproduce this tutorial's two-database deployment:
 
 > Please change and verify every single item listed below.
 {: .prompt-warning }
 
 ```bash
-# Find the following variables to set 
+# Network and model settings
 NETWORK_SUBNET=172.81.0.0/16
 OGMEM_MCP_PORT=5986
 LLM_PROVIDER=volcengine
@@ -269,19 +291,21 @@ OG_AUTH_API_KEY=YOUR_CUSTOM_OG_API_KEY
 OG_AUTH_ACCOUNT_ID=YOUR_CUSTOM_OG_AUTH_ID
 OGMEM_FS_BACKEND=sql
 OGMEM_HTTP_PORT=4831
-OG_PASSWORD=YOUR_CUSTOM_OG_PASSWORD
+VECTOR_DB_PASSWORD=YOUR_VECTOR_DB_PASSWORD
 OG_IMAGE_REPO=swr.cn-north-4.myhuaweicloud.com/kunpeng-ai/opengauss-distributed
 OG_IMAGE_TAG=0422
-OG_CONTAINER_NAME=opengauss_YOUR_USER
-OG_HOST_PORT=18348
-OG_PORT=18348
-# The following two variables can probably be combined. We need both for now.
-OPENGAUSS_HOST_IP=127.0.0.1
-OPENGAUSS_HOST=127.0.0.1
-POSTGRES_PASSWORD=YOUR_POSTGRES_PASSWORD
-POSTGRES_HOST_PORT=31875
-POSTGRES_CONTAINER_NAME=ogmem-postgres-YOUR_USER
+VECTOR_DB_CONTAINER_NAME=opengauss_YOUR_USER
+VECTOR_DB_HOST_PORT=18348
+VECTOR_DB_PORT=18348
+VECTOR_DB_HOST=127.0.0.1
+VECTOR_DB_USER=gaussdb
+VECTOR_DB_NAME=postgres
+STORAGE_DB_PASSWORD=YOUR_STORAGE_DB_PASSWORD
+STORAGE_DB_HOST_PORT=31875
+STORAGE_DB_CONTAINER_NAME=ogmem-postgres-YOUR_USER
 STORAGE_DB_HOST=127.0.0.1
+STORAGE_DB_USER=ogmem
+STORAGE_DB_NAME=ogmem
 OGMEM_CONTAINER_NAME=ogmem_YOUR_USER
 OGMEM_IMAGE=ogmemory:local
 OPENCLAW_CONTAINER_NAME=openclaw_ogmem_YOUR_USER
@@ -289,18 +313,33 @@ OPENCLAW_IMAGE=openclaw-ogmemory:local
 OPENCLAW_HOME_DIR=/home/YOUR_USER/openclaw-data
 ```
 
-For `ogmemory.yaml`, we only need to change the embedding model to the local model we run in the `locomo-test` project.
+Both `ogmem` and OpenClaw use host networking. Keep the database hosts at `127.0.0.1` for this local deployment: application connections use `VECTOR_DB_HOST_PORT=18348` and `STORAGE_DB_HOST_PORT=31875`. `VECTOR_DB_PORT` controls openGauss's internal listening port; Postgres's internal port remains `5432`.
+
+If you are updating an older `ogmemory.yaml`, replace its database connection strings with the current template's references (retain any other settings in these sections):
+
+```yaml
+storage:
+  backend: sql
+  connection_string: "host=${STORAGE_DB_HOST} port=${STORAGE_DB_HOST_PORT} dbname=${STORAGE_DB_NAME} user=${STORAGE_DB_USER} password=${STORAGE_DB_PASSWORD}"
+
+vector_db:
+  type: opengauss
+  connection_string: "host=${VECTOR_DB_HOST} port=${VECTOR_DB_HOST_PORT} dbname=${VECTOR_DB_NAME} user=${VECTOR_DB_USER} password=${VECTOR_DB_PASSWORD}"
+  dimension: 1024
+```
+
+In `ogmemory.yaml`, change the embedding model to the local model we run in the `locomo-test` project.
 
 ```yaml
 embedding:
   provider: openai
   model: "BAAI/bge-large-zh-v1.5"
   base_url: "http://127.0.0.1:9861/v1/"
-  api_key: "YOUR_EMBEDDING_API_KEY"
+  api_key: "YOUR_CUSTOM_PASSWORD"
   multimodal: false    
 ```
 
-Now we should be able to start the services with `docker compose`.
+Now we should be able to start the services with `docker compose`. After changing `.env`, run `up -d` again so Compose recreates affected containers with the new environment; a container restart alone does not reload `.env`.
 
 ```bash
 # Enter the deploy folder in AntTrail and start all containers using the following command
@@ -312,7 +351,7 @@ If all the checks pass, your AntTrail memory system should be up and running. Co
 
 To stop all the containers and delete the volumes, using the following command (-v is dangerous! It deletes all the data you save in the databases.)
 ```bash
-docker compose -p test_lyj_ant_trail_1 --profile with-db --profile with-openclaw down -v
+docker compose -p YOUR_USER_ant_trail --profile with-db --profile with-openclaw down -v
 ```
 
 > If you forget what project name you specified in -p, use `docker compose ls` to list the projects. The project name has to match to manage containers properly. This setting also help avoid shutting down other users' containers accidentally.
@@ -361,11 +400,11 @@ The result should be similar to the following. If you want to rerun the test, th
 You can use `psql` to connect to the exposed port of the postgres container, or use `docker exec -it` to log into the database to inspect the results.
 
 ```bash
-PGPASSWORD='YOUR_POSTGRES_PASSWORD' psql \
+PGPASSWORD='YOUR_STORAGE_DB_PASSWORD' psql \
     -h 127.0.0.1 -p 31875 -U ogmem -d ogmem
 
 # Or use the following command
-docker exec -it ogmem-postgres-test_lyj psql -U ogmem -d ogmem
+docker exec -it ogmem-postgres-YOUR_USER psql -U ogmem -d ogmem
 ```
 
 Below I prepared some simple SQL queries for you to inspect the database.
@@ -401,7 +440,7 @@ Use the following command to log in to opengauss
 docker exec -u omm -it opengauss_YOUR_USER bash -c \
   "export LD_LIBRARY_PATH=/usr/local/opengauss/lib:\$LD_LIBRARY_PATH; \
    /usr/local/opengauss/bin/gsql -p 18348 -d postgres \
-   -U gaussdb -W 'YOUR_OG_PASSWORD' -r"
+   -U gaussdb -W 'YOUR_VECTOR_DB_PASSWORD' -r"
 ```
 
 Here are some sql queries to inspect the opengauss database.
@@ -450,12 +489,30 @@ uv sync --extra dev --extra cv --extra asr
 
 We use two tables `graph_nodes` and `graph_edges` in the postgres database.
 
-We need to fill in the `m3` configurations in `ogmemory.yaml` for the multi-modal memory to work.
+Fill in the `m3` model settings in `deploy/ogmemory.yaml`, including credentials for the providers you use. The current template's judge uses `OGMEM_MINIMAX_API_KEY`; set it in `deploy/.env` if you keep that judge. Configure `m3.embedding` separately to use the same local embedding service:
+
+```yaml
+m3:
+  # Keep your episodic_llm, qa_llm, judge_llm, and other M3 settings here.
+  embedding:
+    provider: openai
+    model: "BAAI/bge-large-zh-v1.5"
+    base_url: "http://127.0.0.1:9861/v1/"
+    api_key: "YOUR_CUSTOM_PASSWORD"
+    dimension: 1024
+```
+
+The graph store defaults to `storage.connection_string`, while the M3 vector index inherits `vector_db.connection_string`. Remove an old `m3.graph_store.connection_string` override if you want the graph tables in the storage database. There is no separate `m3.vector_index.connection_string` setting.
+
+For a local pipeline run, load the environment and resolve the YAML from the AntTrail repository root. All database fields are explicit in the `.env` example above because this local command does not receive Compose's default values.
 
 ```bash
-# Manually resolve the config file
-set -a && source deploy/.env && set +a
-  envsubst < deploy/ogmemory.yaml > data/ogmem_test_lyj.resolved.yaml
+# Run from the AntTrail repository root
+set -a
+source deploy/.env
+set +a
+mkdir -p data
+envsubst < deploy/ogmemory.yaml > data/ogmem_YOUR_USER.resolved.yaml
 ```
 
 Start a face recognition service locally (change the port to avoid confliction please).
@@ -547,16 +604,18 @@ Prepare a small annotation file in `data/m3/annotations`. We name it `bedroom_03
 
 Double check the qa section in `config/m3/pipelines/video_episodic_full.yaml`, make sure the annotation field points to the small annotation file we prepared.
 
-Use the following command to run a complete example with face recognition, voice ASR, speaker diarization, spaker embedding, etc. Remember to check the work dir path, log path and GRAPH_DSN value. 
+Use the following command to run a complete example with face recognition, voice ASR, speaker diarization, spaker embedding, etc. Remember to check the work directory, log path, and storage database settings.
 
 ```bash
-export GRAPH_DSN='host=127.0.0.1 port=31875 dbname=ogmem user=ogmem password=YOUR_POSTGRES_PASSWORD' && uv run --no-sync python -m m3.run_video_pipeline \
+# Reuse the STORAGE_DB_* values loaded from deploy/.env.
+export GRAPH_DSN="host=${STORAGE_DB_HOST} port=${STORAGE_DB_HOST_PORT} dbname=${STORAGE_DB_NAME} user=${STORAGE_DB_USER} password=${STORAGE_DB_PASSWORD}"
+uv run --no-sync python -m m3.run_video_pipeline \
     --pipeline config/m3/pipelines/video_episodic_full.yaml \
     --video data/m3/videos/robot/bedroom_03.mp4 \
     --video-id bedroom_03 \
     --seconds 120 \
     --work-dir data/m3_runs/bedroom_03_full_0807_qa \
-    --config data/ogmem_test_lyj.resolved.yaml \
+    --config data/ogmem_YOUR_USER.resolved.yaml \
     --graph-store sql \
     --connection-string "$GRAPH_DSN" \
     --llm minimax \
