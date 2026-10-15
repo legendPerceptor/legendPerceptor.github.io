@@ -95,7 +95,10 @@
   <!-- Font Awesome -->
   <link rel="stylesheet" href="{{ site.data.origin[type].fontawesome.css | relative_url }}">
 
-  <link rel="stylesheet" href="{{ '/assets/css/:THEME.css' | replace: ':THEME', site.theme | relative_url }}">
+  <!-- `?v=` is a cache-buster: GitHub Pages serves CSS with `max-age=600` and this
+       URL has no content hash, so right after a deploy a reload could pair the
+       new markup with a stale stylesheet. The build timestamp changes per build. -->
+  <link rel="stylesheet" href="{{ '/assets/css/:THEME.css' | replace: ':THEME', site.theme | relative_url }}?v={{ site.time | date: '%s' }}">
 
   {% if site.toc and page.toc %}
     <link rel="stylesheet" href="{{ site.data.origin[type].toc.css | relative_url }}">
