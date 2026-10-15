@@ -1,0 +1,46 @@
+# Caddy config for subscribe.yuanjianliu.net — HTTPS + reverse proxy to uvicorn.
+#
+# Two ways to use it (the upstream differs, so it is parameterised):
+#
+#   A) Caddy in Docker (recommended, no root install):
+#        docker compose --profile tls up -d
+#      compose passes SUBSCRIBE_UPSTREAM=subscribe-api:8080, logs go to stdout.
+#
+#   B) Caddy on the host (apt install caddy):
+#        include this file from /etc/caddy/Caddyfile (or copy it there),
+#        SUBSCRIBE_UPSTREAM defaults to 127.0.0.1:8080, logs go to journald.
+#
+# Either way: point subscribe.yuanjianliu.net at this server first, and make sure
+# inbound 80/tcp + 443/tcp are open (80 is used for the ACME HTTP-01 challenge).
+# Caddy obtains and renews the Let's Encrypt certificate automatically — required,
+# because the site is served over HTTPS and mixed content would be blocked.
+
+subscribe.yuanjianliu.net {
+	encode zstd gzip
+
+	# Only the subscription endpoints are reachable from the internet; the admin
+	# API stays private (reach it over SSH: curl http://127.0.0.1:8080/...).
+	@public path /api/subscribe /api/unsubscribe /healthz
+	handle @public {
+		reverse_proxy {$SUBSCRIBE_UPSTREAM:127.0.0.1:8080} {
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	handle {
+		respond 404
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+		-Server
+	}
+
+	# Default logging goes to stderr: `docker compose logs caddy` / `journalctl -u caddy`.
+	log {
+		output stderr
+		format console
+	}
+}

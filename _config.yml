@@ -97,8 +97,28 @@ social_preview_image: # string, local or CORS resources
 # boolean type, the global switch for TOC in posts.
 toc: true
 
+# Email subscription module › docs/email-subscription.md
+# Rendered by `_includes/subscribe.html`; drop that include anywhere you want the
+# form to appear. An empty `endpoint` (or `enabled: false`) hides it site-wide.
+subscribe:
+  enabled: true
+  # Public HTTPS endpoint of the subscription API (never the static site itself).
+  # Point subscribe.yuanjianliu.net at the machine that runs `subscribe-server/`.
+  endpoint: "https://subscribe.yuanjianliu.net/api/subscribe"
+  title: "Subscribe to new posts"
+  description: "Leave your email and I will let you know when a new post comes out."
+  placeholder: "you@example.com"
+  button_text: "Subscribe"
+  note: "Your address is only used to send new posts. No spam, unsubscribe at any time."
+  messages:
+    sending: "Subscribing…"
+    ok: "Done! You are on the list."
+    exists: "You are already on the list."
+    invalid: "Please enter a valid email address."
+    ratelimited: "Too many attempts. Please try again later."
+    error: "Something went wrong. Please try again later."
+
 comments:
-  # Global switch for the post comment system. Keeping it empty means disabled.
   provider: "giscus" # [disqus | utterances | giscus]
   # The provider options are as follows:
   disqus:
@@ -208,6 +228,7 @@ exclude:
   - "*.gemspec"
   - docs
   - tools
+  - subscribe-server
   - README.md
   - LICENSE
   - rollup.config.js

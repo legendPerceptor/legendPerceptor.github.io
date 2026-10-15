@@ -24,3 +24,15 @@ sudo apt update
 sudo apt install -y ruby-full ruby-dev build-essential zlib1g-dev ruby-bundler
 bundle config set --local path vendor/bundle
 ```
+
+## Email subscription
+
+The homepage carries a reusable subscribe form (`_includes/subscribe.html`, one
+line: `{% include subscribe.html %}` — it can be dropped into any layout, page
+or post). Subscribers are stored by the self-hosted service in
+`subscribe-server/` (FastAPI + SQLite).
+
+- Design and rationale: [`docs/email-subscription.md`](docs/email-subscription.md)
+- Deployment guide: [`subscribe-server/README.md`](subscribe-server/README.md)
+- Point the form at your API in `_config.yml` → `subscribe.endpoint`
+  (empty value hides the form everywhere).

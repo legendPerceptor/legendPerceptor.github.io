@@ -1,0 +1,210 @@
+{%- comment -%}
+  Reusable email subscription module.
+
+  Usage (layouts, pages, tabs, posts — anywhere):
+    {% include subscribe.html %}
+
+  Optional parameters (each one falls back to `site.subscribe.*` in _config.yml):
+    endpoint      API URL, e.g. https://subscribe.yuanjianliu.net/api/subscribe
+    title         heading text
+    description   one supporting sentence
+    placeholder   email input placeholder
+    button_text   button label
+    note          small print under the form
+    source        label stored next to the address (defaults to `page.url`)
+    layout        'card' (default) | 'inline'
+
+  While `site.subscribe.endpoint` is empty (or `enabled: false`) the module renders
+  nothing in production, so pages are never shipped with a dead form.
+{%- endcomment -%}
+
+{%- assign cfg = site.subscribe -%}
+{%- assign sb_endpoint = include.endpoint | default: cfg.endpoint -%}
+{%- assign sb_title = include.title | default: cfg.title | default: 'Subscribe to new posts' -%}
+{%- assign sb_desc = include.description | default: cfg.description -%}
+{%- assign sb_placeholder = include.placeholder | default: cfg.placeholder | default: 'you@example.com' -%}
+{%- assign sb_button = include.button_text | default: cfg.button_text | default: 'Subscribe' -%}
+{%- assign sb_note = include.note | default: cfg.note -%}
+{%- assign sb_layout = include.layout | default: 'card' -%}
+{%- assign sb_source = include.source | default: page.url | default: '/' -%}
+{%- assign sb_msg = cfg.messages -%}
+{%- assign sb_msg_sending = sb_msg.sending | default: 'Subscribing…' -%}
+{%- assign sb_msg_ok = sb_msg.ok | default: 'Done! You are on the list.' -%}
+{%- assign sb_msg_exists = sb_msg.exists | default: 'You are already on the list.' -%}
+{%- assign sb_msg_invalid = sb_msg.invalid | default: 'Please enter a valid email address.' -%}
+{%- assign sb_msg_ratelimited = sb_msg.ratelimited | default: 'Too many attempts. Please try again later.' -%}
+{%- assign sb_msg_error = sb_msg.error | default: 'Something went wrong. Please try again later.' -%}
+
+{%- assign sb_hidden = false -%}
+{%- if cfg.enabled == false or sb_endpoint == nil or sb_endpoint == empty -%}
+  {%- assign sb_hidden = true -%}
+{%- endif -%}
+
+{%- if sb_hidden -%}
+  {%- if jekyll.environment == 'development' -%}
+    <div class="subscribe-box subscribe-box-warn">
+      <p class="subscribe-box-title">Email subscription is not configured</p>
+      <p class="subscribe-box-desc">
+        Set <code>subscribe.endpoint</code> in <code>_config.yml</code> to enable this module — see
+        <code>docs/email-subscription.md</code>.
+      </p>
+    </div>
+  {%- endif -%}
+{%- else -%}
+  <div class="subscribe-box subscribe-box-{{ sb_layout | escape }}" data-subscribe-box>
+    {%- if sb_title != nil and sb_title != empty %}
+    <p class="subscribe-box-title">{{ sb_title | escape }}</p>
+    {%- endif %}
+    {%- if sb_desc != nil and sb_desc != empty %}
+    <p class="subscribe-box-desc">{{ sb_desc | escape }}</p>
+    {%- endif %}
+    <form
+      class="subscribe-form"
+      data-subscribe-form
+      action="{{ sb_endpoint | escape }}"
+      method="post"
+      accept-charset="UTF-8"
+      data-msg-sending="{{ sb_msg_sending | escape }}"
+      data-msg-ok="{{ sb_msg_ok | escape }}"
+      data-msg-exists="{{ sb_msg_exists | escape }}"
+      data-msg-invalid="{{ sb_msg_invalid | escape }}"
+      data-msg-ratelimited="{{ sb_msg_ratelimited | escape }}"
+      data-msg-error="{{ sb_msg_error | escape }}"
+    >
+      <div class="subscribe-form-row">
+        <input
+          class="subscribe-input"
+          type="email"
+          name="email"
+          required
+          maxlength="254"
+          autocomplete="email"
+          inputmode="email"
+          spellcheck="false"
+          aria-label="{{ sb_placeholder | escape }}"
+          placeholder="{{ sb_placeholder | escape }}"
+        >
+        <button class="subscribe-btn" type="submit">{{ sb_button | escape }}</button>
+      </div>
+      <div class="subscribe-hp" aria-hidden="true">
+        <span>Leave this field empty</span>
+        <input type="text" name="sb_hp" tabindex="-1" autocomplete="off">
+      </div>
+      <input type="hidden" name="source" value="{{ sb_source | escape }}">
+      <p class="subscribe-msg" data-subscribe-msg role="status" aria-live="polite"></p>
+    </form>
+    {%- if sb_note != nil and sb_note != empty %}
+    <p class="subscribe-box-note">{{ sb_note | escape }}</p>
+    {%- endif %}
+  </div>
+
+  <script>
+    /* Progressive enhancement for every subscription module on the page. */
+    (function () {
+      if (window.__chirpySubscribe) return;
+      window.__chirpySubscribe = true;
+
+      var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+      function setMessage(box, text, state) {
+        var el = box && box.querySelector('[data-subscribe-msg]');
+        if (!el) return;
+        el.textContent = text || '';
+        el.className = 'subscribe-msg' + (text ? ' subscribe-msg-' + state : '');
+      }
+
+      function attr(form, name) {
+        return form.getAttribute('data-msg-' + name) || '';
+      }
+
+      document.addEventListener('submit', function (event) {
+        var form = event.target;
+        if (!form || !form.hasAttribute || !form.hasAttribute('data-subscribe-form')) return;
+
+        event.preventDefault();
+
+        var box = form.closest('[data-subscribe-box]');
+        var input = form.querySelector('input[name="email"]');
+        var button = form.querySelector('button[type="submit"]');
+        var email = (input && input.value ? input.value : '').trim();
+
+        if (!EMAIL_RE.test(email)) {
+          setMessage(box, attr(form, 'invalid'), 'error');
+          if (input) input.focus();
+          return;
+        }
+
+        if (button && button.disabled) return;
+        if (button) {
+          button.disabled = true;
+          button.dataset.label = button.textContent;
+          button.textContent = attr(form, 'sending');
+        }
+        setMessage(box, '', '');
+
+        var hidden = form.querySelector('input[name="sb_hp"]');
+        var payload = {
+          email: email,
+          source: form.querySelector('input[name="source"]')
+            ? form.querySelector('input[name="source"]').value
+            : '',
+          sb_hp: hidden ? hidden.value : ''
+        };
+
+        var controller = window.AbortController ? new AbortController() : null;
+        var timer = controller
+          ? setTimeout(function () {
+              controller.abort();
+            }, 12000)
+          : null;
+
+        function finish() {
+          if (timer) clearTimeout(timer);
+          if (button) {
+            button.disabled = false;
+            if (button.dataset.label) button.textContent = button.dataset.label;
+          }
+        }
+
+        fetch(form.getAttribute('action'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify(payload),
+          signal: controller ? controller.signal : undefined
+        })
+          .then(function (response) {
+            return response
+              .json()
+              .catch(function () {
+                return {};
+              })
+              .then(function (data) {
+                return { status: response.status, data: data };
+              });
+          })
+          .then(function (result) {
+            var code = result.data && result.data.status;
+            if (
+              result.status === 200 ||
+              result.status === 201 ||
+              code === 'subscribed' ||
+              code === 'already_subscribed'
+            ) {
+              setMessage(box, code === 'already_subscribed' ? attr(form, 'exists') : attr(form, 'ok'), 'ok');
+              if (input) input.value = '';
+            } else if (result.status === 429) {
+              setMessage(box, attr(form, 'ratelimited'), 'error');
+            } else if (result.status === 400 || result.status === 422) {
+              setMessage(box, (result.data && result.data.message) || attr(form, 'invalid'), 'error');
+            } else {
+              setMessage(box, attr(form, 'error'), 'error');
+            }
+          })
+          .catch(function () {
+            setMessage(box, attr(form, 'error'), 'error');
+          })
+          .then(finish);
+      });
+    })();
+  </script>
+{%- endif -%}

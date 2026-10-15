@@ -1,0 +1,44 @@
+services:
+  subscribe-api:
+    build: .
+    image: subscribe-api:1.0.0
+    container_name: subscribe-api
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATA_DIR: /data
+      HOST: 0.0.0.0
+      PORT: 8080
+    volumes:
+      - ./data:/data
+    # Keep the API on the loopback interface and let Caddy/nginx terminate TLS.
+    # Delete this line only if the host itself is the TLS terminator.
+    ports:
+      - "127.0.0.1:8080:8080"
+
+  # Optional TLS reverse proxy: `docker compose --profile tls up -d`
+  # It terminates HTTPS for subscribe.yuanjianliu.net and obtains the Let's
+  # Encrypt certificate automatically (ports 80/443 must be reachable).
+  # If you run Caddy/nginx on the host instead, simply never enable this profile.
+  caddy:
+    image: caddy:2-alpine
+    container_name: subscribe-caddy
+    profiles: ["tls"]
+    restart: unless-stopped
+    depends_on:
+      - subscribe-api
+    environment:
+      SUBSCRIBE_UPSTREAM: subscribe-api:8080
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp" # HTTP/3
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  caddy-data:
+  caddy-config:

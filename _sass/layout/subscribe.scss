@@ -1,0 +1,141 @@
+/*
+  Style for the reusable email subscription module (`_includes/subscribe.html`)
+*/
+
+.subscribe-box {
+  margin: 1.75rem 0;
+  padding: 1.25rem 1.25rem 1rem;
+  border: 1px solid var(--main-border-color);
+  border-radius: $base-radius;
+  background-color: var(--card-bg);
+  box-shadow: var(--card-shadow);
+
+  .subscribe-box-title {
+    margin: 0;
+    color: var(--heading-color);
+    font-family: $font-family-heading;
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+
+  .subscribe-box-desc {
+    margin: 0.4rem 0 0;
+    color: var(--text-muted-color);
+    font-size: 0.9rem;
+  }
+
+  .subscribe-box-note {
+    margin: 0.65rem 0 0;
+    color: var(--text-muted-color);
+    font-size: 0.8rem;
+  }
+
+  .subscribe-form {
+    margin-top: 0.9rem;
+  }
+
+  .subscribe-form-row {
+    display: flex;
+    align-items: stretch;
+    gap: 0.6rem;
+  }
+
+  .subscribe-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--btn-border-color);
+    border-radius: 0.5rem;
+    background-color: var(--main-bg);
+    color: var(--text-color);
+    font-size: 0.95rem;
+
+    &:focus {
+      outline: none;
+      border-color: var(--input-focus-border-color);
+      box-shadow: 0 0 0 0.15rem rgb(136, 0, 0, 0.12);
+    }
+  }
+
+  .subscribe-btn {
+    flex: 0 0 auto;
+    padding: 0.5rem 1.2rem;
+    border: 1px solid #880000;
+    border-radius: 0.5rem;
+    background-color: #880000;
+    color: #ffffff;
+    font-size: 0.95rem;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+
+    &:hover:not(:disabled) {
+      border-color: #a30000;
+      background-color: #a30000;
+    }
+
+    &:disabled {
+      cursor: progress;
+      opacity: 0.65;
+    }
+  }
+
+  .subscribe-msg {
+    margin: 0.6rem 0 0;
+    font-size: 0.85rem;
+
+    &:empty {
+      display: none;
+    }
+
+    &.subscribe-msg-ok {
+      color: var(--prompt-tip-icon-color);
+    }
+
+    &.subscribe-msg-error {
+      color: var(--prompt-danger-icon-color);
+    }
+  }
+
+  /* visually hidden honeypot — humans never fill it in */
+  .subscribe-hp {
+    position: absolute;
+    left: -9999px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+} /* .subscribe-box */
+
+/* inline variant: no card chrome, so it can sit inside a paragraph flow */
+.subscribe-box-inline {
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+} /* .subscribe-box-inline */
+
+/* shown in `jekyll serve` only, when `subscribe.endpoint` has not been set yet */
+.subscribe-box-warn {
+  border-style: dashed;
+  border-color: var(--prompt-warning-icon-color);
+  background-color: var(--prompt-warning-bg);
+  box-shadow: none;
+
+  code {
+    color: inherit;
+  }
+} /* .subscribe-box-warn */
+
+@media all and (max-width: 575px) {
+  .subscribe-box {
+    .subscribe-form-row {
+      flex-direction: column;
+    }
+
+    .subscribe-btn {
+      width: 100%;
+    }
+  }
+}

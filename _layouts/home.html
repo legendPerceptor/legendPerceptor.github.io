@@ -9,6 +9,12 @@ refactor: true
 
 </div>
 
+{% comment %}
+  Email subscription module. Move this single line anywhere (any layout, page,
+  tab or post) — see docs/email-subscription.md.
+{% endcomment %}
+{% include subscribe.html %}
+
 <h2> <ion-icon name="desktop"></ion-icon> RESEARCH </h2>
 
 {% assign research_files = site.research | where_exp: "item", "item.path contains '_research'" %}
